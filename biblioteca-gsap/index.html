@@ -423,10 +423,10 @@ function initMotionPath(create){
   if(window.MotionPathPlugin){
     gsap.set(ship,{opacity:1, rotation:0});
     if(window.DrawSVGPlugin) gsap.set(glow,{drawSVG:"0%"});
-    // MISMO timeline, MISMO ease y MISMO t:0 → trail y nave clavados, autoRotate sigue la tangente
-    const tl=gsap.timeline({repeat:-1, repeatDelay:0.6, defaults:{ease:"power1.inOut", duration:2.2}});
-    if(window.DrawSVGPlugin) tl.to(glow,{drawSVG:"100%"},0);
-    tl.to(ship,{motionPath:{path:path, align:path, alignOrigin:[0.5,0.5], autoRotate:90}},0);
+    // trail lidera, nave retrazada ~0.18s → se ve que SIGUE el path, no que lo lidera
+    const tl=gsap.timeline({repeat:-1, repeatDelay:0.6});
+    if(window.DrawSVGPlugin) tl.to(glow,{drawSVG:"100%", duration:2.2, ease:"power1.inOut"},0);
+    tl.to(ship,{duration:2.2, ease:"power1.inOut", motionPath:{path:path, align:path, alignOrigin:[0.5,0.5], autoRotate:90}},0.18);
     ship._tl=tl;
   } else {
     gsap.to(ship,{x:200,duration:2,ease:"power1.inOut",repeat:-1,yoyo:true});
