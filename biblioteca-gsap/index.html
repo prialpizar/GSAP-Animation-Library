@@ -131,6 +131,7 @@ const LIB = [
   { id:"drag", cat:"physics", title:"Draggable + Inertia", tag:"DRAG", desc:"Cards arrastrables con física real: type x/y + bounds al contenedor + inercia al soltar con rebote en los bordes. Patrón para galleries interactivas / UI táctil.", init: initDrag },
   { id:"overwrite", cat:"physics", title:"Magnetic — Overwrite Auto", tag:"OVERWRITE", desc:"Magnético con overwrite:'auto' — cada mousemove crea un tween que solo cancela la misma prop (x/y). Prueba auto vs none/concurrent/all. Patrón clave para hovers fluidos sin tartamudeo a 60fps.", init: initOverwrite },
   { id:"drawsvg", cat:"physics", title:"DrawSVG — Trazo que se dibuja", tag:"DRAW", desc:"Trazo SVG animado con DrawSVGPlugin: el path se dibuja de 0%→100% con easing power2.inOut + fill que aparece al completar. Patrón para logos, iconos y líneas decorativas.", init: initDrawSVG },
+  { id:"motionpath", cat:"physics", title:"MotionPath — Órbita SVG", tag:"MOTION", desc:"Objeto sigue path SVG con MotionPathPlugin: curvatura automática, autoRotate y align. Patrón para aviones, naves o elementos que orbitan rutas.", init: initMotionPath },
 ];
 
 function render(){
@@ -398,6 +399,37 @@ function initOverwrite(create){
   area.addEventListener("mouseleave", onLeave);
   area.addEventListener("mouseenter", onEnter);
   area._onMove=onMove; area._onLeave=onLeave; area._onEnter=onEnter;
+}
+function initMotionPath(create){
+  if(create){
+    const d=document.createElement("div"); d.id="motionpath-mini";
+    d.innerHTML=`<div style="height:168px;display:grid;place-items:center;background:var(--card);border-radius:12px;border:1px solid var(--bd);margin-top:6px;position:relative;overflow:hidden">
+      <svg width="240" height="120" viewBox="0 0 240 120" style="overflow:visible">
+        <path id="mp-path" d="M10 80 C 60 10, 120 10, 145 60 S 200 110, 230 30" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2" stroke-dasharray="6 6"/>
+        <path id="mp-path-glow" d="M10 80 C 60 10, 120 10, 145 60 S 200 110, 230 30" fill="none" stroke="url(#mpGrad)" stroke-width="3" stroke-linecap="round" opacity="0.95"/>
+        <g id="mp-ship" style="transform-origin:center">
+          <polygon points="0,-9  -7,9  0,5  7,9" fill="white" stroke="rgba(124,92,255,0.9)" stroke-width="1.2" stroke-linejoin="round"/>
+          <circle r="2" fill="#7c5cff"/>
+        </g>
+        <defs><linearGradient id="mpGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#7c5cff"/><stop offset="100%" stop-color="#ff4ecd"/></linearGradient></defs>
+      </svg>
+      <span style="position:absolute;bottom:8px;font-size:0.62rem;letter-spacing:0.08em;color:var(--muted)">MotionPath • autoRotate sigue la curva • loop</span>
+    </div>`;
+    return d;
+  }
+  const ship=document.getElementById("mp-ship"), glow=document.getElementById("mp-path-glow"), path=document.getElementById("mp-path"); if(!ship||!path) return;
+  gsap.killTweensOf([ship,glow]);
+  if(window.MotionPathPlugin){
+    gsap.set(ship,{opacity:1});
+    // trail que se dibuja sutil
+    if(window.DrawSVGPlugin) gsap.fromTo(glow,{drawSVG:"0%"},{drawSVG:"100%",duration:2.2,ease:"none",repeat:-1,repeatDelay:0.6});
+    gsap.to(ship,{
+      duration:2.2, ease:"power1.inOut", repeat:-1, repeatDelay:0.6,
+      motionPath:{path:path, align:path, alignOrigin:[0.5,0.5], autoRotate:true}
+    });
+  } else {
+    gsap.to(ship,{x:200,duration:2,ease:"power1.inOut",repeat:-1,yoyo:true});
+  }
 }
 function initDrawSVG(create){
   if(create){
