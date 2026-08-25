@@ -132,6 +132,8 @@ const LIB = [
   { id:"overwrite", cat:"physics", title:"Magnetic — Overwrite Auto", tag:"OVERWRITE", desc:"Magnético con overwrite:'auto' — cada mousemove crea un tween que solo cancela la misma prop (x/y). Prueba auto vs none/concurrent/all. Patrón clave para hovers fluidos sin tartamudeo a 60fps.", init: initOverwrite },
   { id:"drawsvg", cat:"physics", title:"DrawSVG — Trazo que se dibuja", tag:"DRAW", desc:"Trazo SVG animado con DrawSVGPlugin: el path se dibuja de 0%→100% con easing power2.inOut + fill que aparece al completar. Patrón para logos, iconos y líneas decorativas.", init: initDrawSVG },
   { id:"motionpath", cat:"physics", title:"MotionPath — Órbita SVG", tag:"MOTION", desc:"Objeto sigue path SVG con MotionPathPlugin: curvatura automática, autoRotate y align. Patrón para aviones, naves o elementos que orbitan rutas.", init: initMotionPath },
+  { id:"scrambleOff", cat:"text", title:"ScrambleText Plugin (oficial)", tag:"SCRAMBLE", desc:"Versión oficial con ScrambleTextPlugin: chars 'upperAndLowerCase', revealDelay 0.4, speed 0.6, delimiter. Comparar con #06 custom — mismo efecto pero con plugin oficial y control total.", init: initScrambleOff },
+  { id:"splitOff", cat:"text", title:"SplitText Oficial", tag:"SPLIT", desc:"SplitText oficial: splitType 'chars,words' + stagger chars 0.03 con rotationY y y. Re-inicializable en Replay (revert + re-split). Patrón premium para headlines.", init: initSplitOff },
 ];
 
 function render(){
@@ -430,6 +432,55 @@ function initMotionPath(create){
     ship._tl=tl;
   } else {
     gsap.to(ship,{x:200,duration:2,ease:"power1.inOut",repeat:-1,yoyo:true});
+  }
+}
+function initScrambleOff(create){
+  if(create){
+    const d=document.createElement("div"); d.id="scrambleOff-mini";
+    d.innerHTML=`<div style="height:118px;display:grid;place-items:center;background:var(--card);border-radius:12px;border:1px solid var(--bd);margin-top:6px;position:relative;overflow:hidden;padding:12px">
+      <div id="scrambleOff-text" style="font-weight:900;font-size:1.35rem;letter-spacing:-0.03em;text-align:center;line-height:1">MY ORCA ORDEN</div>
+      <div style="font-size:0.62rem;letter-spacing:0.08em;color:var(--muted);margin-top:8px;text-align:center">ScrambleTextPlugin oficial • chars upperAndLowerCase</div>
+    </div>`;
+    return d;
+  }
+  const el=document.getElementById("scrambleOff-text"); if(!el) return;
+  gsap.killTweensOf(el);
+  if(window.ScrambleTextPlugin){
+    gsap.set(el,{opacity:1});
+    gsap.to(el,{duration:1.8, scrambleText:{text:"MY ORCA ORDEN", chars:"upperAndLowerCase", revealDelay:0.35, speed:0.55, delimiter:""}, ease:"none"});
+    gsap.fromTo(el,{filter:"blur(0px)"},{filter:"blur(0px)",duration:1.8, onUpdate:function(){
+      const p=this.progress(); el.style.textShadow = p<0.92 && (p*20|0)%2===0 ? "1.5px 0 var(--accent2), -1.5px 0 var(--accent)" : "none";
+    }});
+  } else {
+    el.textContent="MY ORCA ORDEN";
+  }
+}
+function initSplitOff(create){
+  if(create){
+    const d=document.createElement("div"); d.id="splitOff-mini";
+    d.innerHTML=`<div style="height:124px;display:grid;place-items:center;background:var(--card);border-radius:12px;border:1px solid var(--bd);margin-top:6px;position:relative;overflow:hidden;padding:12px">
+      <div id="splitOff-text" style="font-weight:900;font-size:1.35rem;letter-spacing:-0.03em;text-align:center;line-height:1">ORCA ORDENA TODO.</div>
+      <div style="font-size:0.62rem;letter-spacing:0.08em;color:var(--muted);margin-top:8px;text-align:center">SplitText oficial • chars stagger 0.03 + 3D</div>
+    </div>`;
+    return d;
+  }
+  const el=document.getElementById("splitOff-text"); if(!el) return;
+  // revert previo
+  if(el._split) { try{ el._split.revert(); }catch(e){} el._split=null; }
+  gsap.killTweensOf(el);
+  if(window.SplitText){
+    const split=new SplitText(el, {type:"chars,words", charsClass:"so-char", wordsClass:"so-word"});
+    el._split=split;
+    gsap.set(split.chars,{opacity:0, y:14, rotationX:-55, transformOrigin:"50% 50%"});
+    gsap.to(split.chars,{opacity:1, y:0, rotationX:0, duration:0.58, stagger:0.028, ease:"back.out(1.4)", overwrite:"auto"});
+    // hover rebote por char
+    split.chars.forEach(c=>{
+      c.addEventListener("mouseenter",()=> gsap.to(c,{y:-6, scale:1.08, duration:0.22, ease:"power2.out", overwrite:"auto"}));
+      c.addEventListener("mouseleave",()=> gsap.to(c,{y:0, scale:1, duration:0.32, ease:"back.out(1.6)", overwrite:"auto"}));
+    });
+  } else {
+    // fallback simple
+    gsap.fromTo(el,{opacity:0, y:10},{opacity:1, y:0, duration:0.5, ease:"power3.out"});
   }
 }
 function initDrawSVG(create){
