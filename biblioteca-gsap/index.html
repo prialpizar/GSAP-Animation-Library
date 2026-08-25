@@ -76,6 +76,18 @@
   .cf-card-mini{position:absolute;width:120px;height:120px;border-radius:12px;overflow:hidden;border:1px solid var(--bd);display:grid;place-items:center;font-weight:800;font-size:0.8rem}
   .drag-card{position:absolute;top:14px;width:64px;height:64px;border-radius:14px;display:grid;place-items:center;font-weight:800;font-size:1rem;cursor:grab;touch-action:none;user-select:none;border:1px solid rgba(255,255,255,0.15)}
   .drag-card:active{cursor:grabbing}
+  @keyframes twblink{0%,49%{opacity:1}50%,100%{opacity:0}}
+  .tw-cursor{display:inline-block;width:0.55ch;height:1.05em;background:var(--accent);margin-left:2px;vertical-align:-0.16em;animation:twblink 0.9s steps(1) infinite}
+  .obs-carousel{height:148px;overflow:hidden;position:relative;border-radius:12px;border:1px solid var(--bd);background:var(--card)}
+  .obs-track{display:flex;height:100%;will-change:transform;padding:10px 0}
+  .obs-card{flex:0 0 58%;margin:0 6px;border-radius:14px;display:grid;place-items:center;font-weight:800;font-size:1rem;color:white;min-width:0}
+  .obs-dots{display:flex;gap:6px;justify-content:center;margin-top:8px}
+  .obs-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.2);cursor:pointer;transition:background .3s,transform .3s}
+  .obs-dot.active{background:var(--accent);transform:scale(1.3)}
+  .phys-wrap{position:relative;height:150px;border-radius:12px;border:1px solid var(--bd);background:var(--card);overflow:hidden;cursor:crosshair}
+  .phys-particle{position:absolute;width:10px;height:10px;border-radius:50%;pointer-events:none;transform:translate(-50%,-50%)}
+  .flipg-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .flipg-tile{height:46px;border-radius:10px;display:grid;place-items:center;font-weight:800;font-size:0.82rem;color:white;cursor:grab}
 </style>
 </head>
 <body>
@@ -134,6 +146,10 @@ const LIB = [
   { id:"motionpath", cat:"physics", title:"MotionPath — Órbita SVG", tag:"MOTION", desc:"Objeto sigue path SVG con MotionPathPlugin: curvatura automática, autoRotate y align. Patrón para aviones, naves o elementos que orbitan rutas.", init: initMotionPath },
   { id:"scrambleOff", cat:"text", title:"ScrambleText — Decodificación Suave", tag:"DECODE", desc:"Decode fluido con ScrambleTextPlugin: revealDelay largo + speed baja + chars sutiles. Sin glitch cromático — transición sedosa letra a letra, ideal para hero premium.", init: initScrambleOff },
   { id:"splitOff", cat:"text", title:"SplitText — Reveal Fluido", tag:"LUXE", desc:"Reveal por palabras con SplitText oficial: yPercent 110 + blur 8→0 + opacity, stagger words 0.08 dur 0.9 power4.out. Sin rotación 3D brusca — flujo sedoso, distinto a #04.", init: initSplitOff },
+  { id:"typewriter", cat:"text", title:"TextPlugin — Typewriter", tag:"TYPE", desc:"Máquina de escribir en bucle con TextPlugin: frases que se teclean carácter a carácter + se borran, con cursor parpadeante. Patrón para hero rotativo / terminal.", init: initTypewriter },
+  { id:"observer", cat:"physics", title:"Observer — Carrusel", tag:"OBSERVER", desc:"Carrusel horizontal controlado por Observer: wheel/touch/pointer para navegar sin ScrollTrigger. Snapping a cada slide + dots clicables. Patrón para galerías táctiles.", init: initObserver },
+  { id:"physics", cat:"physics", title:"Physics2D — Partículas", tag:"PHYSICS", desc:"Explosión de partículas con Physics2DPlugin: al hacer click saltan con velocidad/ángulo/gravedad y se desvanecen. Patrón para confeti, chispas o feedback táctil.", init: initPhysics },
+  { id:"flipgallery", cat:"flip", title:"Flip — Gallery Shuffle", tag:"FLIP", desc:"Galería que se reordena con FLIP: al hacer shuffle captura el estado y re-acomoda los tiles con transición suave. Patrón para filtros / reorder de grids.", init: initFlipGallery },
 ];
 
 function render(){
@@ -447,9 +463,11 @@ function initScrambleOff(create){
   gsap.killTweensOf(el);
   if(window.ScrambleTextPlugin){
     gsap.set(el,{opacity:1, filter:"blur(0px)"});
-    // fluido: reveal lento, chars suaves (—), speed baja → decodificación sedosa sin flicker
-    gsap.to(el,{duration:2.4, scrambleText:{text:"MY ORCA ORDEN", chars:"—•·", revealDelay:0.65, speed:0.32, delimiter:" "}, ease:"power1.inOut"});
-    gsap.fromTo(el,{opacity:0.92, filter:"blur(1px)"},{opacity:1, filter:"blur(0px)", duration:2.4, ease:"power2.out"});
+    // continuo + glitch: letras (sin símbolos feos) pero más rápido y con flicker marcado
+    gsap.to(el,{duration:1.5, scrambleText:{text:"MY ORCA ORDEN", chars:"upperCase", revealDelay:0.25, speed:0.7, delimiter:" "}, ease:"none"});
+    gsap.fromTo(el,{opacity:0.9, filter:"blur(1.2px)"},{opacity:1, filter:"blur(0px)", duration:1.5, ease:"power2.out"});
+    // destello glitch cromático breve
+    gsap.fromTo(el,{textShadow:"-2px 0 #ff2e88, 2px 0 #21e6c1"},{textShadow:"0 0 0 transparent", duration:0.4, delay:0.9, ease:"power1.out"});
   } else {
     el.textContent="MY ORCA ORDEN";
   }
@@ -459,7 +477,7 @@ function initSplitOff(create){
     const d=document.createElement("div"); d.id="splitOff-mini";
     d.innerHTML=`<div style="height:124px;display:grid;place-items:center;background:var(--card);border-radius:12px;border:1px solid var(--bd);margin-top:6px;position:relative;overflow:hidden;padding:12px">
       <div id="splitOff-text" style="font-weight:900;font-size:1.35rem;letter-spacing:-0.03em;text-align:center;line-height:1">ORCA ORDENA TODO.</div>
-      <div style="font-size:0.62rem;letter-spacing:0.08em;color:var(--muted);margin-top:8px;text-align:center">SplitText oficial • palabras yPercent 110 + blur → power4.out</div>
+      <div style="font-size:0.62rem;letter-spacing:0.08em;color:var(--muted);margin-top:8px;text-align:center">SplitText oficial • mask wipe por palabra + sweep cromático</div>
     </div>`;
     return d;
   }
@@ -467,22 +485,131 @@ function initSplitOff(create){
   if(el._split) { try{ el._split.revert(); }catch(e){} el._split=null; }
   gsap.killTweensOf(el);
   if(window.SplitText){
-    const split=new SplitText(el, {type:"words,chars", charsClass:"so-char", wordsClass:"so-word"});
+    const split=new SplitText(el, {type:"words", wordsClass:"so-word"});
     el._split=split;
-    // fluido luxe: por PALABRAS, yPercent + blur, sin rotación brusca — distinto a #04 (chars + rotationX)
-    gsap.set(split.words,{overflow:"hidden", display:"inline-block", verticalAlign:"top"});
-    gsap.set(split.chars,{yPercent:110, opacity:0, filter:"blur(6px)"});
-    gsap.to(split.chars,{
-      yPercent:0, opacity:1, filter:"blur(0px)",
-      duration:0.92, stagger:{each:0.018, from:"start"}, ease:"power4.out", overwrite:"auto"
+    // mask wipe: cada palabra se REVELA con clip-path (no yPercent/blur como #04) + sweep cromático
+    gsap.set(split.words,{display:"inline-block", overflow:"hidden", clipPath:"inset(0 100% 0 0)", x:-14, opacity:0.2});
+    split.words.forEach((w,i)=>{
+      const tl=gsap.timeline({delay:i*0.09});
+      tl.to(w,{clipPath:"inset(0 0% 0 0)", x:0, opacity:1, duration:0.6, ease:"power3.out"})
+        // barrido cromático fugaz en el borde de entrada
+        .fromTo(w,{textShadow:"-3px 0 #ff2e88, 3px 0 #21e6c1"},{textShadow:"0 0 0 transparent", duration:0.35, ease:"power1.out"},0.05);
     });
-    // hover suave por palabra (no por char)
+    // hover: pequeño empuje por palabra
     split.words.forEach(w=>{
-      w.addEventListener("mouseenter",()=> gsap.to(w,{y:-3, duration:0.28, ease:"power2.out", overwrite:"auto"}));
-      w.addEventListener("mouseleave",()=> gsap.to(w,{y:0, duration:0.45, ease:"power3.out", overwrite:"auto"}));
+      w.addEventListener("mouseenter",()=> gsap.to(w,{x:4, duration:0.22, ease:"power2.out", overwrite:"auto"}));
+      w.addEventListener("mouseleave",()=> gsap.to(w,{x:0, duration:0.4, ease:"power3.out", overwrite:"auto"}));
     });
   } else {
     gsap.fromTo(el,{opacity:0, y:12, filter:"blur(4px)"},{opacity:1, y:0, filter:"blur(0px)", duration:0.9, ease:"power4.out"});
+  }
+}
+function initTypewriter(create){
+  if(create){
+    const d=document.createElement("div"); d.id="typewriter-mini";
+    d.innerHTML=`<div style="height:118px;display:grid;place-items:center;background:var(--card);border-radius:12px;border:1px solid var(--bd);margin-top:6px;position:relative;overflow:hidden;padding:18px">
+      <div style="font-family:ui-monospace,monospace;font-weight:700;font-size:1.05rem;text-align:center;line-height:1.3;min-height:2.6em"><span id="tw-text"></span><span id="tw-cursor" class="tw-cursor"></span></div>
+      <div style="font-size:0.62rem;letter-spacing:0.08em;color:var(--muted);margin-top:10px;text-align:center">TextPlugin • typewriter en bucle + cursor parpadeante</div>
+    </div>`;
+    return d;
+  }
+  const el=document.getElementById("tw-text"); if(!el) return;
+  if(el._tl){ el._tl.kill(); }
+  gsap.killTweensOf(el);
+  const phrases=["Ordena el caos.","Anima sin build.","Copia el patrón.","My Orca Orden."];
+  const tl=gsap.timeline({repeat:-1, defaults:{ease:"none"}});
+  phrases.forEach(p=>{
+    tl.set(el,{text:""})
+      .to(el,{duration:p.length*0.055, text:{value:p, delimiter:""}})
+      .to({}, {duration:1.15})
+      .to(el,{duration:Math.max(0.45, p.length*0.03), text:{value:"", delimiter:""}})
+      .to({}, {duration:0.35});
+  });
+  el._tl=tl;
+}
+function initObserver(create){
+  if(create){
+    const d=document.createElement("div"); d.id="observer-mini";
+    d.innerHTML=`<div class="obs-carousel" id="obs-carousel"><div class="obs-track" id="obs-track"></div></div><div class="obs-dots" id="obs-dots"></div><div style="font-size:0.62rem;letter-spacing:0.08em;color:var(--muted);margin-top:8px;text-align:center">Observer • wheel / drag / touch para navegar</div>`;
+    return d;
+  }
+  const carousel=document.getElementById("obs-carousel");
+  const track=document.getElementById("obs-track");
+  const dots=document.getElementById("obs-dots");
+  if(!carousel || !track) return;
+  if(!track.dataset.built){
+    const grad=["linear-gradient(135deg,#7c5cff,#ff4ecd)","linear-gradient(135deg,#00e5cc,#7c5cff)","linear-gradient(135deg,#ff4ecd,#ff8a5c)","linear-gradient(135deg,#5c8cff,#00e5cc)","linear-gradient(135deg,#ffb800,#ff4ecd)"];
+    grad.forEach((g,i)=>{ const c=document.createElement("div"); c.className="obs-card"; c.style.background=g; c.textContent="Slide "+(i+1); track.appendChild(c); });
+    grad.forEach((_,i)=>{ const dt=document.createElement("div"); dt.className="obs-dot"+(i===0?" active":""); dt.addEventListener("click",()=> go(i)); dots.appendChild(dt); });
+    track.dataset.built="1";
+  }
+  const cards=track.children;
+  const dotEls=dots.children;
+  let idx=0;
+  const step=()=> cards[0].offsetWidth + 12;
+  function go(n){
+    idx=gsap.utils.clamp(0, cards.length-1, n);
+    gsap.to(track,{x:-idx*step(), duration:0.5, ease:"power3.out", overwrite:"auto"});
+    for(let i=0;i<dotEls.length;i++) dotEls[i].classList.toggle("active", i===idx);
+  }
+  if(carousel._obs){ carousel._obs.kill(); }
+  carousel._obs=Observer.create({
+    target:carousel, type:"wheel,touch,pointer",
+    wheelSpeed:-1, tolerance:8, preventDefault:true,
+    onUp:()=> go(idx+1), onDown:()=> go(idx-1),
+    onLeft:()=> go(idx+1), onRight:()=> go(idx-1)
+  });
+  gsap.set(track,{x:0});
+}
+function initPhysics(create){
+  if(create){
+    const d=document.createElement("div"); d.id="physics-mini";
+    d.innerHTML=`<div class="phys-wrap" id="phys-wrap"></div><div style="font-size:0.62rem;letter-spacing:0.08em;color:var(--muted);margin-top:10px;text-align:center">Physics2D • haz click para soltar partículas</div>`;
+    return d;
+  }
+  const wrap=document.getElementById("phys-wrap"); if(!wrap) return;
+  if(wrap.dataset.bound) return;
+  wrap.dataset.bound="1";
+  const colors=["#7c5cff","#ff4ecd","#00e5cc","#ff8a5c","#5c8cff"];
+  wrap.addEventListener("click", e=>{
+    const rect=wrap.getBoundingClientRect();
+    const x=e.clientX-rect.left, y=e.clientY-rect.top;
+    for(let i=0;i<20;i++){
+      const p=document.createElement("div"); p.className="phys-particle";
+      const c=colors[(Math.random()*colors.length)|0];
+      p.style.background=c; p.style.left=x+"px"; p.style.top=y+"px";
+      p.style.boxShadow="0 0 10px "+c;
+      wrap.appendChild(p);
+      gsap.to(p,{
+        duration:1.3+Math.random()*0.7, opacity:0, scale:0.2,
+        physics2D:{velocity:7+Math.random()*9, angle:Math.random()*360, gravity:650},
+        ease:"power1.out", onComplete:()=> p.remove()
+      });
+    }
+  });
+}
+function initFlipGallery(create){
+  if(create){
+    const d=document.createElement("div"); d.id="flipgallery-mini";
+    d.innerHTML=`<div class="flipg-grid" id="flipg-grid"></div><div class="demo-actions" style="margin-top:10px"><button class="btn btn-primary" id="flipg-shuffle">⤮ Shuffle</button></div><div style="font-size:0.62rem;letter-spacing:0.08em;color:var(--muted);margin-top:8px;text-align:center">Flip • reordenar grid con transición</div>`;
+    return d;
+  }
+  const grid=document.getElementById("flipg-grid"); if(!grid) return;
+  if(!grid.dataset.built){
+    const grad=["linear-gradient(135deg,#7c5cff,#ff4ecd)","linear-gradient(135deg,#00e5cc,#7c5cff)","linear-gradient(135deg,#ff4ecd,#ff8a5c)","linear-gradient(135deg,#5c8cff,#00e5cc)","linear-gradient(135deg,#ffb800,#ff4ecd)","linear-gradient(135deg,#ff4ecd,#5c8cff)"];
+    grad.forEach((g,i)=>{ const t=document.createElement("div"); t.className="flipg-tile"; t.style.background=g; t.textContent=(i+1); grid.appendChild(t); });
+    grid.dataset.built="1";
+  }
+  const btn=document.getElementById("flipg-shuffle");
+  if(btn && !btn.dataset.bound){
+    btn.dataset.bound="1";
+    btn.addEventListener("click",()=>{
+      const items=[...grid.children];
+      items.sort(()=> Math.random()-0.5);
+      const state=Flip.getState(items);
+      items.forEach(it=> grid.appendChild(it));
+      Flip.from(state,{duration:0.6, ease:"power3.inOut", absolute:true});
+    });
   }
 }
 function initDrawSVG(create){
