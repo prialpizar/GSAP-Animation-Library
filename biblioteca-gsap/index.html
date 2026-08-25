@@ -130,6 +130,7 @@ const LIB = [
   { id:"flip", cat:"flip", title:"FLIP Flujo Horizontal", tag:"FLIP", desc:"FLIP solo en X (deltaY bloqueado). Flujo izq→der en caravana sin salirse en Y. Inserción en misma fila + y:0 lock.", init: initFlip },
   { id:"drag", cat:"physics", title:"Draggable + Inertia", tag:"DRAG", desc:"Cards arrastrables con física real: type x/y + bounds al contenedor + inercia al soltar con rebote en los bordes. Patrón para galleries interactivas / UI táctil.", init: initDrag },
   { id:"overwrite", cat:"physics", title:"Magnetic — Overwrite Auto", tag:"OVERWRITE", desc:"Magnético con overwrite:'auto' — cada mousemove crea un tween que solo cancela la misma prop (x/y). Prueba auto vs none/concurrent/all. Patrón clave para hovers fluidos sin tartamudeo a 60fps.", init: initOverwrite },
+  { id:"drawsvg", cat:"physics", title:"DrawSVG — Trazo que se dibuja", tag:"DRAW", desc:"Trazo SVG animado con DrawSVGPlugin: el path se dibuja de 0%→100% con easing power2.inOut + fill que aparece al completar. Patrón para logos, iconos y líneas decorativas.", init: initDrawSVG },
 ];
 
 function render(){
@@ -397,6 +398,38 @@ function initOverwrite(create){
   area.addEventListener("mouseleave", onLeave);
   area.addEventListener("mouseenter", onEnter);
   area._onMove=onMove; area._onLeave=onLeave; area._onEnter=onEnter;
+}
+function initDrawSVG(create){
+  if(create){
+    const d=document.createElement("div"); d.id="drawsvg-mini";
+    d.innerHTML=`<div style="height:160px;display:grid;place-items:center;background:var(--card);border-radius:12px;border:1px solid var(--bd);margin-top:6px;position:relative;overflow:hidden">
+      <svg width="220" height="110" viewBox="0 0 220 110" style="overflow:visible">
+        <path id="draw-path" d="M10 70 C 40 10, 80 10, 110 55 S 180 100, 210 40" fill="none" stroke="url(#drawGrad)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <path id="draw-path-fill" d="M10 70 C 40 10, 80 10, 110 55 S 180 100, 210 40" fill="none" stroke="rgba(124,92,255,0.12)" stroke-width="14" stroke-linecap="round"/>
+        <circle id="draw-dot" r="6" fill="white" stroke="rgba(124,92,255,0.9)" stroke-width="2"/>
+        <defs><linearGradient id="drawGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#7c5cff"/><stop offset="100%" stop-color="#ff4ecd"/></linearGradient></defs>
+      </svg>
+      <span style="position:absolute;bottom:8px;font-size:0.62rem;letter-spacing:0.08em;color:var(--muted)">DrawSVG 0→100% • el punto sigue el trazo</span>
+    </div>`;
+    return d;
+  }
+  const path=document.getElementById("draw-path"), dot=document.getElementById("draw-dot"); if(!path||!dot) return;
+  gsap.killTweensOf([path,dot]);
+  if(window.DrawSVGPlugin){
+    gsap.set(path,{drawSVG:"0%"});
+    gsap.set(dot,{opacity:0});
+    const tl=gsap.timeline({defaults:{ease:"power2.inOut"}});
+    tl.to(path,{duration:1.6,drawSVG:"100%"})
+      .to(dot,{duration:0.2,opacity:1},0.15)
+      .to(dot,{duration:1.6,ease:"none",motionPath:{path:path,align:path,alignOrigin:[0.5,0.5],autoRotate:false}},0)
+      .fromTo(path,{strokeWidth:4},{duration:0.35,strokeWidth:5,yoyo:true,repeat:1,ease:"power2.out"},1.35);
+    // fallback fill pulse
+    gsap.fromTo("#draw-path-fill",{opacity:0.15},{opacity:0.35,duration:1.6,ease:"power2.inOut",repeat:0});
+  } else {
+    // fallback sin plugin: strokeDash
+    const len=path.getTotalLength(); path.style.strokeDasharray=len; path.style.strokeDashoffset=len;
+    gsap.to(path,{strokeDashoffset:0,duration:1.6,ease:"power2.inOut"});
+  }
 }
 
 render();
