@@ -4,9 +4,13 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Biblioteca GSAP — My Orca Orden</title>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/Flip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/Flip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/Draggable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/MorphSVGPlugin.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/InertiaPlugin.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/CustomWiggle.min.js"></script>
 <style>
   :root{ --bg:#0a0a0f; --card:#16161e; --card2:#1c1c24; --accent:#7c5cff; --accent2:#ff4ecd; --text:#f5f5f7; --muted:#9aa0b2; --bd:rgba(255,255,255,0.08) }
   *{margin:0;padding:0;box-sizing:border-box}
@@ -59,6 +63,8 @@
   .cf-mini{perspective:700px;height:160px;position:relative;margin-top:10px;overflow:hidden}
   .cf-track-mini{position:absolute;inset:0;display:grid;place-items:center;transform-style:preserve-3d}
   .cf-card-mini{position:absolute;width:120px;height:120px;border-radius:12px;overflow:hidden;border:1px solid var(--bd);display:grid;place-items:center;font-weight:800;font-size:0.8rem}
+  .drag-card{position:absolute;top:14px;width:64px;height:64px;border-radius:14px;display:grid;place-items:center;font-weight:800;font-size:1rem;cursor:grab;touch-action:none;user-select:none;border:1px solid rgba(255,255,255,0.15)}
+  .drag-card:active{cursor:grabbing}
 </style>
 </head>
 <body>
@@ -82,19 +88,25 @@
 </div>
 
 <script>
-gsap.registerPlugin(ScrollTrigger, Flip);
+gsap.registerPlugin(ScrollTrigger, Flip, Draggable);
+if(window.MorphSVGPlugin) gsap.registerPlugin(MorphSVGPlugin);
+if(window.InertiaPlugin) gsap.registerPlugin(InertiaPlugin);
 
 const LIB = [
   { id:"hero", cat:"timeline", title:"Hero Timeline", tag:"TIMELINE", desc:"Timeline secuencial con easing power3.out: eyebrow → título por líneas → párrafo → CTAs. + parallax sutil del título al scrollear.", init: initHero },
-  { id:"stagger", cat:"timeline", title:"Stagger Grid", tag:"STAGGER", desc:"Entrada en cascada con stagger:0.12 y rotateX. Hover con física elástica. Base para cualquier grid de cards.", init: initStagger },
-  { id:"reveal", cat:"scroll", title:"ScrollTrigger Reveal", tag:"SCROLL", desc:"Revelado al entrar en viewport (start: top 80%) + parallax en scrub 1:1. Ideal para secciones que aparecen al scrollear.", init: initReveal },
+  { id:"stagger", cat:"timeline", title:"Stagger Grid", tag:"STAGGER", desc:"Stagger de entrada SIN scroll — timeline al cargar: y:24 + rotateX + stagger 0.12. Hover levanta con elástica. Patrón para grids estáticos.", init: initStagger },
+  { id:"reveal", cat:"scroll", title:"ScrollTrigger Reveal", tag:"SCROLL", desc:"Revelado ACTIVADO POR SCROLL (start: top 85%) con scrub parallax. Cada caja entra solo al entrar en viewport + se mueve en y con scroll. Patrón para secciones largas.", init: initReveal },
   { id:"split", cat:"text", title:"Split Text", tag:"TEXTO", desc:"Split por caracteres con rotationX y blur. Stagger 0.04 + hover que rebota. Patrón para headlines.", init: initSplit },
-  { id:"luxe", cat:"text", title:"Text Reveal Luxe", tag:"MASK", desc:"Máscara por líneas (overflow hidden + yPercent 110 + blur) + palabras con stagger. Timeline con ScrollTrigger y replay.", init: initLuxe },
+  { id:"luxe", cat:"text", title:"Text Reveal Luxe", tag:"MASK", desc:"Máscara suave por líneas: yPercent 105 + blur 10→0 + opacity, duración 1.1 + stagger 0.14. Palabras secundarias con y:16 suave. Reveal premium sin golpe.", init: initLuxe },
+  { id:"scramble", cat:"text", title:"Text Scramble", tag:"GLITCH", desc:"Descifrado carácter a carácter estilo terminal: glyphs aleatorios que se fijan izquierda→derecha + aberración cromática RGB mientras decodifica. Patrón para headlines hacker / efecto matrix.", init: initScramble },
   { id:"hpin", cat:"scroll", title:"Horizontal Pin", tag:"PIN", desc:"Sección pinneada que desliza horizontal (xPercent -66) con scrub:1. Efecto horizontal sin librería extra.", init: initHPin },
-  { id:"morph", cat:"physics", title:"SVG Morph & Counter", tag:"MORPH", desc:"Morph de blob (cambio de path) + rotación infinita + contadores con snap. Para stats y blobs de fondo.", init: initMorph },
-  { id:"magnet", cat:"physics", title:"Botón Magnético", tag:"FÍSICA", desc:"Botón que sigue el mouse con inercia (x/y *0.35) y rebote elástico al salir. Física GSAP pura.", init: initMagnet },
+  { id:"morph", cat:"physics", title:"SVG Morph", tag:"MORPH", desc:"Círculo → gota → diamante → estrella • 4 formas • morphSVG 1.35s + rotación 20s. Cada silueta distinta.", init: initMorph },
+  { id:"counter", cat:"physics", title:"Counter Snap", tag:"COUNTER", desc:"Contadores con snap:1 como en el demo — 247 proyectos + 100% con duración 1.4s/1.6s + ScrollTrigger once. Integrado como en demo, sin blob.", init: initCounter },
+  { id:"magnet", cat:"physics", title:"Botón Magnético", tag:"FÍSICA", desc:"Magnético fluido: sigue al mouse *0.45/*0.6 con duración 0.38 + escala sutil al acercarse, retorno elástico 1.2/0.35. Movimiento contínuo, no nervioso.", init: initMagnet },
   { id:"cover", cat:"3d", title:"Infinite Coverflow 3D", tag:"3D", desc:"Coverflow infinito con perspective 1400, rotateY -42, profundidad z y brightness. Drag + autoplay + wrap normalizado.", init: initCover },
   { id:"flip", cat:"flip", title:"FLIP Flujo Horizontal", tag:"FLIP", desc:"FLIP solo en X (deltaY bloqueado). Flujo izq→der en caravana sin salirse en Y. Inserción en misma fila + y:0 lock.", init: initFlip },
+  { id:"drag", cat:"physics", title:"Draggable + Inertia", tag:"DRAG", desc:"Cards arrastrables con física real: type x/y + bounds al contenedor + inercia al soltar con rebote en los bordes. Patrón para galleries interactivas / UI táctil.", init: initDrag },
+  { id:"overwrite", cat:"physics", title:"Magnetic — Overwrite Auto", tag:"OVERWRITE", desc:"Magnético con overwrite:'auto' — cada mousemove crea un tween que solo cancela la misma prop (x/y). Prueba auto vs none/concurrent/all. Patrón clave para hovers fluidos sin tartamudeo a 60fps.", init: initOverwrite },
 ];
 
 function render(){
@@ -162,12 +174,19 @@ function initHero(create){
   tl.from("#h1a",{y:24,opacity:0,duration:0.6}).from("#h1b",{y:24,opacity:0,duration:0.6},0.15).from("#hp",{y:10,opacity:0,duration:0.5},0.35);
 }
 function initStagger(create){
-  if(create){ const d=document.createElement("div"); d.className="stagger-mini"; d.id="stagger-mini"; d.innerHTML=`<div style="background:linear-gradient(135deg,#7c5cff,#5c8cff)">A</div><div style="background:linear-gradient(135deg,#ff4ecd,#ff8a5c)">B</div><div style="background:linear-gradient(135deg,#00e5cc,#7c5cff)">C</div>`; return d; }
-  gsap.from("#stagger-mini div",{y:16,opacity:0,rotateX:6,duration:0.5,stagger:0.08,ease:"power3.out"});
+  if(create){ const d=document.createElement("div"); d.className="stagger-mini"; d.id="stagger-mini"; d.innerHTML=`<div style="background:linear-gradient(135deg,#7c5cff,#5c8cff)">A</div><div style="background:linear-gradient(135deg,#ff4ecd,#ff8a5c)">B</div><div style="background:linear-gradient(135deg,#00e5cc,#7c5cff)">C</div><div style="background:linear-gradient(135deg,#ffb800,#ff4ecd);grid-column:span 3;font-size:0.7rem;letter-spacing:0.08em">AUTO — sin scroll • hover para probar</div>`; return d; }
+  gsap.from("#stagger-mini div",{y:24,opacity:0,rotateX:8,duration:0.7,stagger:0.12,ease:"power3.out"});
+  // hover elástica solo para stagger
+  document.querySelectorAll("#stagger-mini div").forEach(c=>{
+    c.addEventListener("mouseenter",()=> gsap.to(c,{y:-4,scale:1.03,duration:0.28,ease:"power2.out"}));
+    c.addEventListener("mouseleave",()=> gsap.to(c,{y:0,scale:1,duration:0.35,ease:"back.out(1.6)"}));
+  });
 }
 function initReveal(create){
-  if(create){ const d=document.createElement("div"); d.className="reveal-mini"; d.id="reveal-mini"; d.innerHTML=`<div style="background:linear-gradient(135deg,#7c5cff,#5c8cff)">In</div><div style="background:linear-gradient(135deg,#ff4ecd,#ff8a5c)">Scrub</div><div style="background:linear-gradient(135deg,#00e5cc,#7c5cff)">Out</div>`; return d; }
-  gsap.from("#reveal-mini div",{y:18,opacity:0,scale:0.96,duration:0.5,stagger:0.08,ease:"power3.out"});
+  if(create){ const d=document.createElement("div"); d.className="reveal-mini"; d.id="reveal-mini"; d.style.minHeight="86px"; d.innerHTML=`<div style="background:linear-gradient(135deg,#7c5cff,#5c8cff)">SCROLL</div><div style="background:linear-gradient(135deg,#ff4ecd,#ff8a5c)">→ entra</div><div style="background:linear-gradient(135deg,#00e5cc,#7c5cff)">en viewport</div><div style="grid-column:span 3;font-size:0.68rem;color:var(--muted);text-align:center;padding-top:4px">Haz scroll / Replay para ver el trigger</div>`; return d; }
+  gsap.fromTo("#reveal-mini div:not(:last-child)",{y:26,opacity:0,scale:0.94},{y:0,opacity:1,scale:1,duration:0.7,stagger:0.12,ease:"power3.out",scrollTrigger:{trigger:"#reveal-mini",start:"top 92%",toggleActions:"play none none reverse"}});
+  // parallax sutil solo en reveal
+  gsap.to("#reveal-mini div:not(:last-child)",{y:-10,stagger:0.06,ease:"none",scrollTrigger:{trigger:"#reveal-mini",start:"top 80%",end:"bottom 20%",scrub:0.9}});
 }
 function initSplit(create){
   if(create){ const d=document.createElement("div"); d.id="split-mini"; d.className="split-mini"; return d; }
@@ -179,23 +198,92 @@ function initLuxe(create){
   if(create){ const d=document.createElement("div"); d.id="luxe-mini"; d.innerHTML=`<div style="overflow:hidden"><span id="lm1" style="display:block;font-weight:900;font-size:1.1rem;letter-spacing:-0.03em">Ideas que <em style="background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent">ordenan</em></span></div><div style="overflow:hidden"><span id="lm2" style="display:block;font-weight:900;font-size:1.1rem">caos en sistemas</span></div><div id="lmw" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:0.28em;color:var(--muted);font-size:0.82rem"></div>`; return d; }
   const w=document.getElementById("lmw"); if(!w) return; w.innerHTML="";
   "Diseñamos sistemas que convierten ruido en orden.".split(" ").forEach(word=>{ const s=document.createElement("span"); s.textContent=word; s.style.display="inline-block"; w.appendChild(s); });
-  gsap.from("#lm1,#lm2",{yPercent:110,opacity:0,filter:"blur(6px)",duration:0.7,stagger:0.1,ease:"power4.out"});
-  gsap.from("#lmw span",{y:8,opacity:0,filter:"blur(3px)",duration:0.4,stagger:0.02,delay:0.3});
+  // reveal SUAVE — sin golpe: blur 10→0, yPercent 105, duración larga, power4
+  gsap.from("#lm1,#lm2",{yPercent:105,opacity:0,filter:"blur(10px)",duration:1.15,stagger:0.14,ease:"power4.out"});
+  gsap.from("#lmw span",{y:16,opacity:0,filter:"blur(6px)",duration:0.65,stagger:0.04,delay:0.45,ease:"power3.out"});
+}
+function initScramble(create){
+  if(create){ const d=document.createElement("div"); d.id="scramble-mini"; d.innerHTML=`<div id="scramble-text" style="font-family:ui-monospace,monospace;font-weight:800;font-size:1.25rem;letter-spacing:0.02em;min-height:1.5em;white-space:pre">MY ORCA ORDEN</div><div style="font-size:0.68rem;color:var(--muted);margin-top:8px">decode carácter a carácter • aberración RGB durante el glitch</div>`; return d; }
+  const el=document.getElementById("scramble-text"); if(!el) return;
+  const original="MY ORCA ORDEN";
+  const glyphs="!<>-_\\/[]{}=+*^?#01";
+  if(el._tick) gsap.ticker.remove(el._tick);
+  const queue=[...original].map((ch,i)=>({ch,start:i*7,end:i*7+18+((Math.random()*12)|0)}));
+  let frame=0;
+  const tick=()=>{
+    frame++;
+    let out="",done=0;
+    for(const q of queue){
+      if(frame>=q.end){ out+=q.ch===" "?"\u00A0":q.ch; done++; }
+      else if(frame>=q.start){ out+=glyphs[(Math.random()*glyphs.length)|0]; }
+      else out+="\u00A0";
+    }
+    el.textContent=out;
+    el.style.textShadow = done<queue.length && frame%4<2 ? "2px 0 var(--accent2),-2px 0 var(--accent)" : "none";
+    if(done===queue.length){
+      gsap.ticker.remove(tick); el._tick=null;
+      gsap.fromTo(el,{filter:"brightness(1.8)"},{filter:"brightness(1)",duration:0.35,ease:"power2.out"});
+    }
+  };
+  el._tick=tick;
+  gsap.ticker.add(tick);
 }
 function initHPin(create){
   if(create){ const d=document.createElement("div"); d.style.overflow="hidden"; d.innerHTML=`<div id="hpin-track" class="hpin-track"><div class="hpin-card" style="background:linear-gradient(135deg,#7c5cff,#ff4ecd)">Card A</div><div class="hpin-card" style="background:linear-gradient(135deg,#00e5cc,#7c5cff)">Card B</div><div class="hpin-card" style="background:linear-gradient(135deg,#ff4ecd,#ff8a5c)">Card C</div></div><button class="btn" style="margin-top:8px" onclick="document.getElementById('hpin-track').dataset.p=(parseInt(document.getElementById('hpin-track').dataset.p||0)+1)%2; gsap.to('#hpin-track',{xPercent: document.getElementById('hpin-track').dataset.p? -46:0, duration:0.7, ease:'power3.inOut'})">▶ Deslizar</button>`; return d; }
   gsap.set("#hpin-track",{xPercent:0});
 }
 function initMorph(create){
-  if(create){ const d=document.createElement("div"); d.style.display="grid"; d.style.placeItems="center"; d.innerHTML=`<svg id="blob-mini" width="120" height="120" viewBox="0 0 200 200"><path id="blob-mini-path" fill="url(#gm)" d="M45,-58C58,-46,68,-30,72,-12C76,6,74,26,64,42C54,58,36,70,15,74C-6,78,-30,74,-48,62C-66,50,-78,30,-80,8C-82,-14,-74,-38,-58,-50C-42,-62,-20,-62,1,-64C22,-66,32,-70,45,-58Z" transform="translate(100 100)"/><defs><linearGradient id="gm"><stop offset="0%" stop-color="#7c5cff"/><stop offset="100%" stop-color="#ff4ecd"/></linearGradient></defs></svg><div id="cnt-mini" style="font-weight:900;color:var(--accent)">0</div>`; return d; }
-  gsap.to("#blob-mini",{rotation:360,duration:12,repeat:-1,ease:"none",transformOrigin:"50% 50%"});
-  let o={v:0}; gsap.to(o,{v:100,duration:1.2,ease:"power2.out",onUpdate:()=>{ const e=document.getElementById("cnt-mini"); if(e) e.textContent=Math.round(o.v)+"%" }});
+  if(create){
+    const d=document.createElement("div"); d.style.display="grid"; d.style.placeItems="center"; d.style.gap="6px";
+    d.innerHTML=`
+    <div id="morph-stage" style="position:relative;width:140px;height:140px;display:grid;place-items:center">
+      <svg width="140" height="140" viewBox="0 0 200 200" style="overflow:visible;display:block"><path id="blob-mini-path" d="M0,-56C30.9,-56 56,-30.9 56,0C56,30.9 30.9,56 0,56C-30.9,56 -56,30.9 -56,0C-56,-30.9 -30.9,-56 0,-56Z" transform="translate(100 100)" fill="url(#gm)"/><defs><linearGradient id="gm"><stop offset="0%" stop-color="#7c5cff"/><stop offset="100%" stop-color="#ff4ecd"/></linearGradient></defs></svg>
+    </div>
+    <div id="morph-label" style="font-size:0.62rem;letter-spacing:0.12em;color:var(--muted)">círculo → gota → diamante → estrella • morphSVG • rotación 20s</div>
+    <!-- paths ocultos para morph (solo referencia) -->
+    <svg width="0" height="0" style="position:absolute"><path id="path-circle" d="M0,-56C30.9,-56 56,-30.9 56,0C56,30.9 30.9,56 0,56C-30.9,56 -56,30.9 -56,0C-56,-30.9 -30.9,-56 0,-56Z" transform="translate(100 100)"/><path id="path-drop" d="M0,-52C26,-52 50,-36 56,-8C58,22 38,52 0,74C-38,52 -58,22 -56,-8C-50,-36 -26,-52 0,-52Z" transform="translate(100 100)"/><path id="path-diamond" d="M0,-58L58,0L0,58L-58,0Z" transform="translate(100 100)"/><path id="path-star" d="M0,-60L16.2,-19.1L57.9,-18.4L24.9,6.2L34.8,48.1L0,23.6L-34.8,48.1L-24.9,6.2L-57.9,-18.4L-16.2,-19.1Z" transform="translate(100 100)"/></svg>`;
+    return d;
+  }
+  const stage=document.getElementById("morph-stage");
+  gsap.killTweensOf("#blob-mini-path, #morph-stage");
+  gsap.to("#morph-stage",{rotation:360,duration:20,repeat:-1,ease:"none",transformOrigin:"50% 50%",overwrite:"auto"});
+  if(window.MorphSVGPlugin){
+    gsap.set("#blob-mini-path",{morphSVG:"#path-circle"});
+    const tl=gsap.timeline({repeat:-1, repeatDelay:0.4});
+    tl.to("#blob-mini-path",{duration:1.3,ease:"power2.inOut",morphSVG:"#path-drop"}, "+=0.7")
+      .to("#blob-mini-path",{duration:1.3,ease:"power2.inOut",morphSVG:"#path-diamond"}, "+=0.7")
+      .to("#blob-mini-path",{duration:1.3,ease:"power2.inOut",morphSVG:"#path-star"}, "+=0.7")
+      .to("#blob-mini-path",{duration:1.3,ease:"power2.inOut",morphSVG:"#path-circle"}, "+=0.7");
+  }
+  const lab=document.getElementById("morph-label");
+  if(lab){
+    const names=["círculo","gota","diamante","estrella"]; let i=0;
+    gsap.to({}, {duration:2.5, repeat:-1, onRepeat:()=>{ i=(i+1)%4; lab.textContent = names[i] + " → " + names[(i+1)%4] + " → " + names[(i+2)%4] + " → " + names[(i+3)%4] + " • morphSVG"; }});
+  }
+  // label dinámico
+  const labelEl = document.querySelector("#demo-morph div div:last-child");
+  if(labelEl){
+    const names=["círculo","gota","estrella"];
+    let li=0;
+    gsap.to({}, {duration:1.95, repeat:-1, onRepeat:()=>{ li=(li+1)%3; if(labelEl) labelEl.textContent = names[li] + " → " + names[(li+1)%3] + " → " + names[(li+2)%3] + " • morph 1.35s"; }});
+  }
+}
+function initCounter(create){
+  if(create){ const d=document.createElement("div"); d.style.display="grid"; d.style.gap="10px"; d.innerHTML=`<div style="display:flex;gap:10px"><div style="flex:1;background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;text-align:center"><div id="cnt-a" style="font-size:1.6rem;font-weight:900;color:var(--accent)">0</div><div style="font-size:0.62rem;letter-spacing:0.12em;color:var(--muted)">PROYECTOS</div></div><div style="flex:1;background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;text-align:center"><div id="cnt-b" style="font-size:1.6rem;font-weight:900;color:var(--accent2)">0%</div><div style="font-size:0.62rem;letter-spacing:0.12em;color:var(--muted)">COMPLETADO</div></div></div><div style="font-size:0.68rem;color:var(--muted);text-align:center">snap:1 • ScrollTrigger once • como en demo</div>`; return d; }
+  function runCounters(){
+    let o={v:0}; gsap.to(o,{v:247,duration:1.4,ease:"power2.out",snap:{v:1},onUpdate:()=>{ const e=document.getElementById("cnt-a"); if(e) e.textContent=Math.round(o.v); }});
+    let o2={v:0}; gsap.to(o2,{v:100,duration:1.6,ease:"power2.out",snap:{v:1},onUpdate:()=>{ const e=document.getElementById("cnt-b"); if(e) e.textContent=Math.round(o2.v)+"%"; }});
+  }
+  runCounters();
+  ScrollTrigger.create({trigger:"#cnt-a",start:"top 92%",once:true,onEnter:runCounters});
 }
 function initMagnet(create){
-  if(create){ const d=document.createElement("div"); d.id="magnet-mini-area"; d.style.cssText="height:90px;display:grid;place-items:center;background:var(--card);border-radius:12px;border:1px solid var(--bd);margin-top:6px"; d.innerHTML=`<button id="magnet-mini" class="btn btn-primary" style="padding:10px 18px">✦ Pasa el mouse</button>`; return d; }
+  if(create){ const d=document.createElement("div"); d.id="magnet-mini-area"; d.style.cssText="height:110px;display:grid;place-items:center;background:var(--card);border-radius:12px;border:1px solid var(--bd);margin-top:6px;position:relative;overflow:hidden"; d.innerHTML=`<button id="magnet-mini" class="btn btn-primary" style="padding:12px 22px;will-change:transform">✦ Pasa el mouse</button><span style="position:absolute;bottom:8px;font-size:0.65rem;letter-spacing:0.08em;color:var(--muted)">más alcance • retorno fluido</span>`; return d; }
   const area=document.getElementById("magnet-mini-area"), btn=document.getElementById("magnet-mini"); if(!area||!btn) return;
-  area.onmousemove=e=>{ const r=area.getBoundingClientRect(); const x=(e.clientX-r.left-r.width/2)*0.3; const y=(e.clientY-r.top-r.height/2)*0.45; gsap.to(btn,{x,y,duration:0.35,ease:"power3.out"}) };
-  area.onmouseleave=()=> gsap.to(btn,{x:0,y:0,duration:0.6,ease:"elastic.out(1,0.4)"});
+  area.onmousemove=e=>{ const r=area.getBoundingClientRect(); const x=(e.clientX-r.left-r.width/2)*0.45; const y=(e.clientY-r.top-r.height/2)*0.6; const dist=Math.hypot(x,y); const s= 1 + Math.min(dist*0.004,0.08); gsap.to(btn,{x,y,scale:s,duration:0.38,ease:"power3.out",overwrite:"auto"}) };
+  area.onmouseleave=()=> gsap.to(btn,{x:0,y:0,scale:1,duration:0.9,ease:"elastic.out(1,0.35)",overwrite:"auto"});
+  // brillo sutil al entrar
+  area.onmouseenter=()=> gsap.to(btn,{boxShadow:"0 8px 24px rgba(124,92,255,0.3)",duration:0.3});
 }
 function initCover(create){
   if(create){ const d=document.createElement("div"); d.className="cf-mini"; d.id="cf-mini"; d.innerHTML=`<div id="cf-track-mini" class="cf-track-mini"></div><div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);font-size:0.68rem;color:var(--muted);background:rgba(0,0,0,0.35);padding:4px 8px;border-radius:100px" id="cf-idx-mini">1 / 6</div>`; return d; }
@@ -212,21 +300,80 @@ function initCover(create){
   track.onclick=()=>{ cur=(cur+1)%cards.length; render(); };
 }
 function initFlip(create){
-  if(create){ const d=document.createElement("div"); d.className="flip-mini-cols"; d.innerHTML=`<div class="flip-col-mini"><h4>IZQ <span id="fc-a">3</span></h4><div id="fg-a" class="flip-grid-mini"></div></div><div style="display:grid;place-items:center">→</div><div class="flip-col-mini"><h4>DER <span id="fc-b">0</span></h4><div id="fg-b" class="flip-grid-mini"><div style="color:var(--muted);font-size:0.7rem;text-align:center;padding:10px 0">vacío</div></div></div>`; return d; }
+  if(create){ const d=document.createElement("div"); d.className="flip-mini-cols"; d.innerHTML=`<div class="flip-col-mini"><h4>IZQ <span id="fc-a">3</span></h4><div id="fg-a" class="flip-grid-mini"></div></div><div style="display:grid;place-items:center;font-size:0.7rem;color:var(--muted);letter-spacing:0.08em">FLUJO<br>→ solo X</div><div class="flip-col-mini"><h4>DER <span id="fc-b">0</span></h4><div id="fg-b" class="flip-grid-mini"><div style="color:var(--muted);font-size:0.7rem;text-align:center;padding:10px 0">vacío</div></div></div>`; return d; }
   const ga=document.getElementById("fg-a"), gb=document.getElementById("fg-b"); if(!ga||ga.children.length) return;
+  // lock Y: todas las cards con will-change pero y fijo a 0 durante FLIP
   [{c1:"#7c5cff",c2:"#5c8cff",t:"Aurora"},{c1:"#ff4ecd",c2:"#ff8a5c",t:"Terra"},{c1:"#00e5cc",c2:"#7c5cff",t:"Nómada"}].forEach(d=>{
-    const el=document.createElement("div"); el.className="flip-card-mini"; el.style.background=`linear-gradient(135deg,${d.c1},${d.c2})`; el.textContent=d.t; el.onclick=()=>{
+    const el=document.createElement("div"); el.className="flip-card-mini"; el.style.background=`linear-gradient(135deg,${d.c1},${d.c2})`; el.style.willChange="transform"; el.textContent=d.t; el.onclick=()=>{
       const from=el.parentElement, to=from===ga?gb:ga;
+      // FIX DEFINITIVO Y — animación SOLO en X (sin brinco vertical)
+      // 1) captura rect inicial de la card que se mueve
+      const first = el.getBoundingClientRect();
+      // 2) captura estado de las DEMÁS cards (para que refluyan)
+      const othersState = Flip.getState(".flip-card-mini:not(.is-moving)");
+      el.classList.add("is-moving");
       const idx=[...from.children].indexOf(el);
-      const state=Flip.getState(".flip-card-mini");
       const tc=[...to.children].filter(x=>x.classList.contains("flip-card-mini"));
       if(tc[idx]) to.insertBefore(el,tc[idx]); else to.appendChild(el);
-      const tw=Flip.from(state,{duration:0.6,ease:"power2.inOut",absolute:true,simple:true});
-      gsap.set(el,{y:0}); if(tw) tw.eventCallback("onUpdate",()=> gsap.set(el,{y:0}));
+      const last = el.getBoundingClientRect();
+      const dx = first.left - last.left;
+      // 3) anima las otras cards con FLIP (reflujo natural, Y permitido)
+      if(othersState) Flip.from(othersState,{duration:0.55,ease:"power2.inOut",absolute:false,simple:true,stagger:0.02});
+      // 4) la card movida SOLO en X — Y clavado a 0 con ticker
+      gsap.set(el,{y:0});
+      gsap.fromTo(el,{x:dx},{x:0,y:0,duration:0.68,ease:"power2.inOut",clearProps:"x",onComplete:()=>{
+        el.classList.remove("is-moving");
+        gsap.set(el,{y:0,clearProps:"y"});
+      }});
+      // ticker que clava Y a 0 durante los 700ms (por si GSAP lo toca)
+      let t=0; const kill = gsap.ticker.add(()=>{ if(t++>42){ gsap.ticker.remove(kill); return; } gsap.set(el,{y:0}); });
       document.getElementById("fc-a").textContent=[...ga.children].filter(x=>x.classList.contains("flip-card-mini")).length;
       document.getElementById("fc-b").textContent=[...gb.children].filter(x=>x.classList.contains("flip-card-mini")).length;
     }; ga.appendChild(el);
   });
+  gsap.set(".flip-card-mini",{y:0});
+}
+function initDrag(create){
+  if(create){ const d=document.createElement("div"); d.id="drag-mini"; d.style.cssText="position:relative;height:170px;background:var(--card);border-radius:12px;border:1px solid var(--bd);margin-top:6px;overflow:hidden"; d.innerHTML=`<div class="drag-card" style="background:linear-gradient(135deg,#7c5cff,#5c8cff)">A</div><div class="drag-card" style="background:linear-gradient(135deg,#ff4ecd,#ff8a5c)">B</div><div class="drag-card" style="background:linear-gradient(135deg,#00e5cc,#7c5cff)">C</div><span style="position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:0.65rem;letter-spacing:0.08em;color:var(--muted)">arrastra y lanza • inercia + rebote en bordes</span>`; return d; }
+  const area=document.getElementById("drag-mini"); if(!area) return;
+  if(area._draggables) area._draggables.forEach(dg=>dg.kill());
+  const cards=area.querySelectorAll(".drag-card");
+  gsap.set(cards,{clearProps:"x,y"});
+  gsap.set(cards,{x:(i)=>12+i*92,y:16});
+  const cfg={type:"x,y",bounds:area,edgeResistance:0.78,bounceResistance:0.4,allowNativeTouchScrolling:false};
+  if(window.InertiaPlugin) cfg.inertia=true;
+  area._draggables=Draggable.create(cards,cfg);
+}
+function initOverwrite(create){
+  if(create){ const d=document.createElement("div"); d.id="overwrite-mini"; d.innerHTML=`<div id="overwrite-area" style="height:142px;display:grid;place-items:center;background:var(--card);border-radius:12px;border:1px solid var(--bd);margin-top:6px;position:relative;overflow:hidden"><button id="overwrite-btn" class="btn btn-primary" style="padding:14px 24px;will-change:transform;display:flex;align-items:center;gap:8px"><span id="overwrite-label" style="display:inline-block;will-change:transform">OVERWRITE: auto</span><span style="font-size:0.9em">→</span></button><span style="position:absolute;bottom:8px;font-size:0.62rem;letter-spacing:0.08em;color:var(--muted)">palabra sigue recta al cursor • sticky con bounce</span></div><div style="display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap"><label for="overwrite-mode" style="font-size:0.72rem;color:var(--muted)">overwrite:</label><select id="overwrite-mode" style="background:var(--card);border:1px solid var(--bd);color:var(--text);padding:6px 10px;border-radius:100px;font-size:0.75rem;outline:none"><option value="auto" selected>auto ← recomendado</option><option value="none">none (acumula)</option><option value="concurrent">concurrent</option><option value="all">all</option><option value="preexisting">preexisting</option></select><span style="font-size:0.62rem;color:var(--muted)">auto = solo solapa x/y</span></div>`; return d; }
+  const area=document.getElementById("overwrite-area"), btn=document.getElementById("overwrite-btn"), label=document.getElementById("overwrite-label"), sel=document.getElementById("overwrite-mode"); if(!area||!btn||!label) return;
+  const getMode=()=> sel ? sel.value : "auto";
+  const setLabel=()=> label.textContent="OVERWRITE: " + getMode().toUpperCase();
+  setLabel(); if(sel) sel.addEventListener("change", setLabel);
+  const onMove=e=>{
+    const r=area.getBoundingClientRect();
+    const cx=r.left+r.width/2, cy=r.top+r.height/2;
+    const dx=e.clientX-cx, dy=e.clientY-cy;
+    const bx=dx*0.42, by=dy*0.58;
+    const lx=dx*0.10, ly=dy*0.14;
+    const mode=getMode();
+    gsap.to(btn,{x:bx,y:by,duration:0.38,ease:"power3.out",overwrite:mode});
+    gsap.to(label,{x:lx,y:ly,rotation:0,duration:0.38,ease:"power3.out",overwrite:mode});
+  };
+  const onLeave=()=>{
+    const mode=getMode();
+    gsap.to(btn,{x:0,y:0,duration:0.95,ease:"elastic.out(1,0.38)",overwrite:mode});
+    gsap.to(label,{x:0,y:0,rotation:0,duration:0.95,ease:"elastic.out(1,0.38)",overwrite:mode});
+    gsap.to(btn,{boxShadow:"0 0 0 rgba(0,0,0,0)",duration:0.3,overwrite:mode});
+  };
+  const onEnter=()=> gsap.to(btn,{boxShadow:"0 12px 32px rgba(124,92,255,0.35)",duration:0.25,overwrite:getMode()});
+  area.removeEventListener("mousemove", area._onMove || (()=>{}));
+  area.removeEventListener("mouseleave", area._onLeave || (()=>{}));
+  area.removeEventListener("mouseenter", area._onEnter || (()=>{}));
+  area.addEventListener("mousemove", onMove);
+  area.addEventListener("mouseleave", onLeave);
+  area.addEventListener("mouseenter", onEnter);
+  area._onMove=onMove; area._onLeave=onLeave; area._onEnter=onEnter;
 }
 
 render();
