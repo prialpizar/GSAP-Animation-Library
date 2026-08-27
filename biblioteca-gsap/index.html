@@ -150,6 +150,12 @@ const LIB = [
   { id:"observer", cat:"physics", title:"Observer — Carrusel", tag:"OBSERVER", desc:"Carrusel horizontal controlado por Observer: wheel/touch/pointer para navegar sin ScrollTrigger. Snapping a cada slide + dots clicables. Patrón para galerías táctiles.", init: initObserver },
   { id:"physics", cat:"physics", title:"Physics2D — Partículas", tag:"PHYSICS", desc:"Explosión de partículas con Physics2DPlugin: al hacer click saltan con velocidad/ángulo/gravedad y se desvanecen. Patrón para confeti, chispas o feedback táctil.", init: initPhysics },
   { id:"flipgallery", cat:"flip", title:"Flip — Gallery Shuffle", tag:"FLIP", desc:"Galería que se reordena con FLIP: al hacer shuffle captura el estado y re-acomoda los tiles con transición suave. Patrón para filtros / reorder de grids.", init: initFlipGallery },
+  // — NUEVAS #23-27 —
+  { id:"maggrid", cat:"physics", title:"Magnetic Grid", tag:"MAGNETIC", desc:"Grid de 6 items que se atraen hacia el cursor con fuerza magnética proporcional a la distancia. Cada item tiene su propio campo de atracción. Patrón para portfolios / galleries interactivas.", init: initMagGrid },
+  { id:"glitch", cat:"text", title:"Text Glitch", tag:"GLITCH", desc:"Efecto glitch con aberración cromática RGB: el texto se distorsiona con capas desplazadas en rojo/verde/azul + scanlines + flicker. Patrón para headlines cyberpunk / hacker.", init: initGlitch },
+  { id:"scrollprogress", cat:"scroll", title:"Scroll Progress", tag:"PROGRESS", desc:"Barra de progreso animada + secciones que se revelan según el scroll. Incluye counter animado con snap + highlight de sección activa. Patrón para landing pages con narrativa.", init: initScrollProgress },
+  { id:"cardtilt", cat:"3d", title:"3D Card Tilt", tag:"TILT 3D", desc:"Cards que siguen la posición del mouse en 3D con perspective: rotateX/rotateY proporcional al cursor + shine effect que se mueve. Patrón para product cards / portfolios premium.", init: initCardTilt },
+  { id:"parallax", cat:"scroll", title:"Parallax Layers", tag:"PARALLAX", desc:"Multi-capas con velocidades diferentes al scroll: texto lento, forma media, partículas rápidas. Crea profundidad real sin librería extra. Patrón para heroes / secciones storytelling.", init: initParallax },
 ];
 
 function render(){
@@ -580,11 +586,21 @@ function initPhysics(create){
       p.style.background=c; p.style.left=x+"px"; p.style.top=y+"px";
       p.style.boxShadow="0 0 10px "+c;
       wrap.appendChild(p);
-      gsap.to(p,{
-        duration:1.3+Math.random()*0.7, opacity:0, scale:0.2,
-        physics2D:{velocity:7+Math.random()*9, angle:Math.random()*360, gravity:650},
-        ease:"power1.out", onComplete:()=> p.remove()
-      });
+      const angle=Math.random()*Math.PI*2;
+      const speed=180+Math.random()*220;
+      let vx=Math.cos(angle)*speed;
+      let vy=Math.sin(angle)*speed;
+      let px=0, py=0;
+      const gravity=900;
+      gsap.to(p,{opacity:0,scale:0.2,duration:1.2+Math.random()*0.6,ease:"power1.out",onComplete:()=>{ p.remove(); gsap.ticker.remove(tick); }});
+      const tick=()=>{
+        const dt=gsap.ticker.deltaRatio()*0.016;
+        vy+=gravity*dt;
+        px+=vx*dt;
+        py+=vy*dt;
+        gsap.set(p,{x:px,y:py});
+      };
+      gsap.ticker.add(tick);
     }
   });
 }
@@ -643,6 +659,216 @@ function initDrawSVG(create){
     const len=path.getTotalLength(); path.style.strokeDasharray=len; path.style.strokeDashoffset=len;
     gsap.to(path,{strokeDashoffset:0,duration:1.6,ease:"power2.inOut"});
   }
+}
+
+// — NUEVAS DEMOS #23-27 —
+
+function initMagGrid(create){
+  if(create){
+    const d=document.createElement("div"); d.id="maggrid-mini"; d.style.cssText="position:relative;height:180px;background:var(--card);border-radius:12px;border:1px solid var(--bd);margin-top:6px;overflow:hidden";
+    const colors=["#7c5cff","#ff4ecd","#00e5cc","#ffb800","#5cffb0","#5c8cff"];
+    const labels=["A","B","C","D","E","F"];
+    let html="";
+    colors.forEach((c,i)=>{
+      const row=Math.floor(i/3), col=i%3;
+      html+=`<div class="maggrid-item" style="position:absolute;left:${20+col*100}px;top:${20+row*70}px;width:64px;height:54px;border-radius:12px;background:linear-gradient(135deg,${c},${c}88);display:grid;place-items:center;font-weight:800;font-size:0.9rem;will-change:transform;border:1px solid rgba(255,255,255,0.15);cursor:pointer">${labels[i]}</div>`;
+    });
+    d.innerHTML=html+`<span style="position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:0.62rem;letter-spacing:0.08em;color:var(--muted)">múltiples items magnéticos • cada uno reacciona al cursor</span>`;
+    return d;
+  }
+  const area=document.getElementById("maggrid-mini"); if(!area) return;
+  const items=area.querySelectorAll(".maggrid-item");
+  area.addEventListener("mousemove",e=>{
+    const rect=area.getBoundingClientRect();
+    items.forEach(item=>{
+      const ir=item.getBoundingClientRect();
+      const ix=ir.left+ir.width/2-rect.left;
+      const iy=ir.top+ir.height/2-rect.top;
+      const mx=e.clientX-rect.left;
+      const my=e.clientY-rect.top;
+      const dx=mx-ix, dy=my-iy;
+      const dist=Math.hypot(dx,dy);
+      const maxDist=120;
+      if(dist<maxDist){
+        const force=(1-dist/maxDist)*0.35;
+        gsap.to(item,{x:dx*force,y:dy*force,scale:1+force*0.2,duration:0.35,ease:"power3.out",overwrite:"auto"});
+      } else {
+        gsap.to(item,{x:0,y:0,scale:1,duration:0.6,ease:"elastic.out(1,0.4)",overwrite:"auto"});
+      }
+    });
+  });
+  area.addEventListener("mouseleave",()=>{
+    items.forEach(item=> gsap.to(item,{x:0,y:0,scale:1,duration:0.8,ease:"elastic.out(1,0.35)",overwrite:"auto"}));
+  });
+}
+
+function initGlitch(create){
+  if(create){
+    const d=document.createElement("div"); d.id="glitch-mini";
+    d.innerHTML=`<div style="height:140px;display:grid;place-items:center;background:var(--card);border-radius:12px;border:1px solid var(--bd);margin-top:6px;position:relative;overflow:hidden">
+      <div style="position:relative;display:inline-block">
+        <div id="glitch-text" style="font-weight:900;font-size:1.8rem;letter-spacing:-0.04em;position:relative;color:#fff">GLITCH</div>
+        <div id="glitch-r" style="position:absolute;top:0;left:0;width:100%;font-weight:900;font-size:1.8rem;letter-spacing:-0.04em;color:rgba(255,0,0,0.7);mix-blend-mode:screen;pointer-events:none">GLITCH</div>
+        <div id="glitch-g" style="position:absolute;top:0;left:0;width:100%;font-weight:900;font-size:1.8rem;letter-spacing:-0.04em;color:rgba(0,255,0,0.7);mix-blend-mode:screen;pointer-events:none">GLITCH</div>
+        <div id="glitch-b" style="position:absolute;top:0;left:0;width:100%;font-weight:900;font-size:1.8rem;letter-spacing:-0.04em;color:rgba(0,100,255,0.7);mix-blend-mode:screen;pointer-events:none">GLITCH</div>
+      </div>
+      <div style="position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.15) 2px,rgba(0,0,0,0.15) 4px);pointer-events:none;opacity:0.4"></div>
+      <span style="position:absolute;bottom:8px;font-size:0.62rem;letter-spacing:0.08em;color:var(--muted)">aberración RGB + scanlines • click para activar</span>
+    </div>`;
+    return d;
+  }
+  const main=document.getElementById("glitch-text");
+  const r=document.getElementById("glitch-r");
+  const g=document.getElementById("glitch-g");
+  const b=document.getElementById("glitch-b");
+  if(!main||!r||!g||!b) return;
+  const area=main.closest("#glitch-mini")||main.closest("div[style]");
+  let active=false;
+  function runGlitch(){
+    if(active) return; active=true;
+    const dur=0.8+Math.random()*0.4;
+    const tl=gsap.timeline({onComplete:()=>{ active=false; }});
+    tl.to(r,{x:-4+Math.random()*8,y:-2+Math.random()*4,duration:0.08,repeat:6,yoyo:true,ease:"steps(1)"},0)
+      .to(g,{x:-3+Math.random()*6,y:2+Math.random()*4,duration:0.08,repeat:6,yoyo:true,ease:"steps(1)"},0)
+      .to(b,{x:3+Math.random()*6,y:-1+Math.random()*3,duration:0.08,repeat:6,yoyo:true,ease:"steps(1)"},0)
+      .to([r,g,b],{opacity:0,duration:0.1},dur)
+      .to(main,{filter:"brightness(1.5)",duration:0.05,yoyo:true,repeat:1},dur*0.3)
+      .set([r,g,b],{x:0,y:0,opacity:1});
+  }
+  if(area) area.addEventListener("click",runGlitch);
+  // auto-glitch cada 3s
+  gsap.to({},{duration:3,repeat:-1,onRepeat:runGlitch});
+}
+
+function initScrollProgress(create){
+  if(create){
+    const d=document.createElement("div"); d.id="scrollprog-mini";
+    d.innerHTML=`<div id="sp-scroll" style="height:200px;overflow-y:auto;overflow-x:hidden;background:var(--card);border-radius:12px;border:1px solid var(--bd);margin-top:6px;padding:12px;position:relative">
+      <div style="position:sticky;top:0;z-index:2;margin:-12px -12px 10px -12px;background:var(--card);padding:8px 12px;border-radius:12px 12px 0 0">
+        <div style="height:4px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden"><div id="sp-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent2))"></div></div>
+        <div id="sp-counter" style="text-align:right;font-size:0.72rem;font-weight:800;color:var(--accent);margin-top:6px">0%</div>
+      </div>
+      <div id="sp-sections" style="display:flex;flex-direction:column;gap:10px">
+        <div class="sp-sec" style="padding:10px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid var(--bd);opacity:0.08;transform:translateX(-16px) scale(0.98);filter:blur(1px)"><div style="font-weight:700;font-size:0.85rem">Intro</div><div style="font-size:0.72rem;color:var(--muted)">Sección 1 de 5</div></div>
+        <div class="sp-sec" style="padding:10px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid var(--bd);opacity:0.08;transform:translateX(-16px) scale(0.98);filter:blur(1px)"><div style="font-weight:700;font-size:0.85rem">Features</div><div style="font-size:0.72rem;color:var(--muted)">Sección 2 de 5</div></div>
+        <div class="sp-sec" style="padding:10px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid var(--bd);opacity:0.08;transform:translateX(-16px) scale(0.98);filter:blur(1px)"><div style="font-weight:700;font-size:0.85rem">Pricing</div><div style="font-size:0.72rem;color:var(--muted)">Sección 3 de 5</div></div>
+        <div class="sp-sec" style="padding:10px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid var(--bd);opacity:0.08;transform:translateX(-16px) scale(0.98);filter:blur(1px)"><div style="font-weight:700;font-size:0.85rem">CTA</div><div style="font-size:0.72rem;color:var(--muted)">Sección 4 de 5</div></div>
+        <div class="sp-sec" style="padding:10px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid var(--bd);opacity:0.08;transform:translateX(-16px) scale(0.98);filter:blur(1px)"><div style="font-weight:700;font-size:0.85rem">Bonus</div><div style="font-size:0.72rem;color:var(--muted)">Sección 5 de 5</div></div>
+      </div>
+      <div style="text-align:center;font-size:0.62rem;color:var(--muted);margin-top:10px">↕ scroll dentro del demo</div>
+    </div>`;
+    return d;
+  }
+  const wrap=document.getElementById("sp-scroll");
+  const bar=document.getElementById("sp-bar");
+  const counter=document.getElementById("sp-counter");
+  const secs=document.querySelectorAll("#sp-sections .sp-sec");
+  if(!wrap||!bar) return;
+  if(wrap.dataset.bound) return; wrap.dataset.bound="1";
+  wrap.addEventListener("scroll",()=>{
+    const maxScroll=wrap.scrollHeight-wrap.clientHeight;
+    const pct=maxScroll>0? Math.round((wrap.scrollTop/maxScroll)*100):0;
+    bar.style.width=pct+"%";
+    if(counter) counter.textContent=pct+"%";
+    const activeIdx=Math.min(4,Math.floor(pct/20));
+    secs.forEach((s,i)=>{
+      if(i<=activeIdx){
+        gsap.to(s,{opacity:1,x:0,scale:1,filter:"blur(0px)",duration:0.45,ease:"power3.out",overwrite:"auto"});
+      } else {
+        gsap.to(s,{opacity:0.08,x:-16,scale:0.98,filter:"blur(1px)",duration:0.35,ease:"power2.out",overwrite:"auto"});
+      }
+    });
+  });
+  // trigger inicial — solo la primera visible con fuerza
+  gsap.set(secs,{opacity:0.08,x:-16,scale:0.98,filter:"blur(1px)"});
+  gsap.to(secs[0],{opacity:1,x:0,scale:1,filter:"blur(0px)",duration:0.5,ease:"power3.out"});
+}
+
+function initCardTilt(create){
+  if(create){
+    const d=document.createElement("div"); d.id="cardtilt-mini"; d.style.cssText="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px";
+    const grads=["linear-gradient(135deg,#7c5cff,#5c8cff)","linear-gradient(135deg,#ff4ecd,#ff8a5c)","linear-gradient(135deg,#00e5cc,#7c5cff)"];
+    grads.forEach((g,i)=>{
+      d.innerHTML+=`<div class="ct-card" style="perspective:600px;height:120px"><div style="width:100%;height:100%;border-radius:14px;background:${g};display:grid;place-items:center;font-weight:800;font-size:0.9rem;will-change:transform;position:relative;overflow:hidden;transition:transform 0.1s ease-out"><div class="ct-shine" style="position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,rgba(255,255,255,0.3) 0%,transparent 60%);opacity:0;pointer-events:none"></div>${["Aurora","Terra","Nómada"][i]}</div></div>`;
+    });
+    d.innerHTML+=`<span style="grid-column:1/-1;font-size:0.62rem;letter-spacing:0.08em;color:var(--muted);text-align:center;margin-top:4px">mover mouse sobre las cards • 3D tilt + shine</span>`;
+    return d;
+  }
+  const cards=document.querySelectorAll("#cardtilt-mini .ct-card");
+  cards.forEach(card=>{
+    const inner=card.firstElementChild;
+    const shine=card.querySelector(".ct-shine");
+    if(!inner) return;
+    // fix: quitar transition CSS que pelea con GSAP y asegurar transform-style
+    gsap.set(inner,{transformPerspective:700, transformOrigin:"center center"});
+    inner.style.transition="none";
+    card.style.transformStyle="preserve-3d";
+    if(card.dataset.bound) return; card.dataset.bound="1";
+    card.addEventListener("mousemove",e=>{
+      const rect=card.getBoundingClientRect();
+      const x=(e.clientX-rect.left)/rect.width;
+      const y=(e.clientY-rect.top)/rect.height;
+      const rotateY=(x-0.5)*34;
+      const rotateX=(0.5-y)*34;
+      const tx=(x-0.5)*14;
+      const ty=(y-0.5)*-10;
+      gsap.to(inner,{rotationY:rotateY,rotationX:rotateX,x:tx,y:ty,z:18,scale:1.04,duration:0.18,ease:"power3.out",transformPerspective:700,overwrite:"auto"});
+      if(shine){
+        gsap.set(shine,{opacity:1});
+        shine.style.background=`radial-gradient(circle at ${x*100}% ${y*100}%,rgba(255,255,255,0.42) 0%,rgba(255,255,255,0.08) 22%,transparent 58%)`;
+      }
+      gsap.to(card,{boxShadow:`${(x-0.5)*18}px ${(y-0.5)*18+8}px 28px rgba(0,0,0,0.35)`,duration:0.18,overwrite:"auto"});
+    });
+    card.addEventListener("mouseleave",()=>{
+      gsap.to(inner,{rotationY:0,rotationX:0,x:0,y:0,z:0,scale:1,duration:0.7,ease:"elastic.out(1,0.38)",overwrite:"auto"});
+      if(shine) gsap.to(shine,{opacity:0,duration:0.35,overwrite:"auto"});
+      gsap.to(card,{boxShadow:"0 0 0 rgba(0,0,0,0)",duration:0.6,overwrite:"auto"});
+    });
+  });
+}
+
+function initParallax(create){
+  if(create){
+    const d=document.createElement("div"); d.id="parallax-mini";
+    d.innerHTML=`<div id="plx-scroll" style="height:220px;overflow-y:auto;overflow-x:hidden;background:var(--card);border-radius:12px;border:1px solid var(--bd);margin-top:6px;position:relative">
+      <div style="height:420px;position:relative">
+        <div id="plx-bg" style="position:absolute;inset:0;will-change:transform">
+          <div style="position:absolute;top:20px;left:50%;transform:translateX(-50%);width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(124,92,255,0.22),rgba(255,78,205,0.14) 60%,transparent 70%);filter:blur(22px)"></div>
+          <div style="position:absolute;top:140px;left:18%;width:90px;height:90px;border-radius:50%;background:rgba(0,229,204,0.07);filter:blur(16px)"></div>
+        </div>
+        <div id="plx-mid" style="position:absolute;inset:0;will-change:transform">
+          <div style="position:absolute;top:40px;left:16%;width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#7c5cff,#5c8cff);opacity:0.9;box-shadow:0 8px 24px rgba(124,92,255,0.3)"></div>
+          <div style="position:absolute;top:180px;right:18%;width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#ff4ecd,#ff8a5c);opacity:0.85"></div>
+          <div style="position:absolute;top:120px;left:60%;width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#00e5cc,#7c5cff);opacity:0.8"></div>
+        </div>
+        <div id="plx-text" style="position:absolute;top:90px;left:0;right:0;display:grid;place-items:center;will-change:transform">
+          <div style="text-align:center;background:rgba(10,10,15,0.6);backdrop-filter:blur(8px);padding:14px 20px;border-radius:14px;border:1px solid rgba(255,255,255,0.08)">
+            <div style="font-weight:900;font-size:1.35rem;letter-spacing:-0.03em">Parallax</div>
+            <div style="font-size:0.72rem;color:var(--muted);margin-top:4px">scroll dentro • 3 velocidades</div>
+          </div>
+        </div>
+        <div style="position:absolute;bottom:22px;left:0;right:0;text-align:center;font-size:0.62rem;letter-spacing:0.08em;color:var(--muted)">bg ×0.15 • mid ×0.45 • texto ×0.85</div>
+      </div>
+    </div>`;
+    return d;
+  }
+  const scroller=document.getElementById("plx-scroll");
+  const bg=document.getElementById("plx-bg");
+  const mid=document.getElementById("plx-mid");
+  const text=document.getElementById("plx-text");
+  if(!scroller||!bg||!mid||!text) return;
+  if(scroller.dataset.bound) return; scroller.dataset.bound="1";
+  // velocidades diferenciadas: bg lento, mid medio, texto rápido
+  scroller.addEventListener("scroll",()=>{
+    const y=scroller.scrollTop;
+    gsap.to(bg,{y:y*0.15,duration:0.35,ease:"power2.out",overwrite:"auto"});
+    gsap.to(mid,{y:y*0.45,duration:0.35,ease:"power2.out",overwrite:"auto"});
+    gsap.to(text,{y:y*0.85,duration:0.35,ease:"power2.out",overwrite:"auto"});
+    // profundidad extra: bg se desvanece un poco al scrollear
+    gsap.to(bg,{opacity:1 - y*0.002,duration:0.35,overwrite:"auto"});
+  });
+  // entrada
+  gsap.from([bg,mid,text],{y:24,opacity:0,duration:0.6,stagger:0.08,ease:"power3.out"});
 }
 
 render();
