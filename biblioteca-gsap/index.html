@@ -228,6 +228,11 @@
   .fc-face{position:absolute;inset:0;border-radius:14px;display:grid;place-items:center;font-weight:900;font-size:0.9rem;color:white;backface-visibility:hidden;-webkit-backface-visibility:hidden;border:1px solid rgba(255,255,255,0.14)}
   .fc-front{background:linear-gradient(135deg,var(--accent),#5c8cff)}
   .fc-back{background:linear-gradient(135deg,var(--accent2),#ff8a5c);transform:rotateY(180deg)}
+  /* ── #60 Proximity Scale Grid ── */
+  .psg-wrap{position:relative;height:320px;background:var(--card);border:1px solid var(--bd);border-radius:12px;overflow:hidden;cursor:crosshair}
+  .psg-stage{position:relative;width:100%;height:100%}
+  .psg-card{position:absolute;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;font-weight:900;font-size:0.75rem;color:white;will-change:transform;transform-origin:center center}
+  .psg-hint{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);font-size:0.62rem;color:var(--muted);pointer-events:none}
 </style>
 </head>
 <body>
@@ -332,6 +337,8 @@ const LIB = [
   { id:"accordion", cat:"timeline", title:"Accordion — Height Auto", tag:"FAQ", desc:"Acordeón con height:'auto' animado por GSAP (sin medir nada a mano): un panel abierto a la vez, cierre de los demás + chevron rotado. Patrón para FAQs / listas colapsables.", init: initAccordion },
   { id:"progressring", cat:"physics", title:"Progress Ring — SVG", tag:"RING", desc:"Anillo SVG que se dibuja con stroke-dashoffset hasta el porcentaje objetivo + contador animado con snap. Replay y modo aleatorio. Patrón para KPIs / stats circulares.", init: initProgressRing },
   { id:"flipcard", cat:"3d", title:"Flip Card — Front/Back", tag:"FLIP 3D", desc:"Tarjeta que gira 180° con rotationY + preserve-3d: cara frontal y trasera con backface-visibility hidden. Click para girar en incrementos acumulativos. Patrón para reveal de producto / info oculta.", init: initFlipCard },
+  // — NUEVAS #60-64 (animaciones de peso) —
+  { id:"proximitygrid", cat:"physics", title:"Proximity Scale Grid", tag:"PROXIMITY", desc:"Grid de cards dispersas que se escalan según la distancia al cursor: Math.hypot calcula la distancia, gsap.utils.mapRange la convierte en proximidad 0→1, y cada card recibe un gsap.to con scale + overwrite:true. Controles para radius, maxScale y duración. Patrón para hover effects / galerías interactivas.", init: initProximityScaleGrid },
 ];
 
 function render(){
@@ -2382,6 +2389,59 @@ function initFlipCard(create){
   // demo automático: una vuelta y regreso
   gsap.to(card,{rotationY:180,duration:0.7,delay:0.5,ease:"power3.inOut"});
   gsap.to(card,{rotationY:360,duration:0.7,delay:1.6,ease:"power3.inOut"});
+}
+
+function initProximityScaleGrid(create){
+  if(create){
+    const d=document.createElement("div"); d.id="proximitygrid-mini";
+    // 12 cards dispersas con posiciones fijas (porcentaje del contenedor)
+    const positions=[
+      {x:8,y:10},{x:30,y:5},{x:55,y:12},{x:80,y:8},
+      {x:15,y:35},{x:42,y:30},{x:68,y:38},{x:90,y:32},
+      {x:10,y:62},{x:38,y:68},{x:62,y:60},{x:85,y:70}
+    ];
+    const labels=["gsap.to","gsap.from","gsap.set","timeline","stagger","ease","Flip","MotionPath","SplitText","ScrollTrigger","Observer","Draggable"];
+    let cardsHTML='';
+    positions.forEach((p,i)=>{
+      cardsHTML+=`<div class="psg-card" style="left:${p.x}%;top:${p.y}%">${labels[i]}</div>`;
+    });
+    d.innerHTML=`<div class="psg-wrap" id="psg-wrap"><div class="psg-stage" id="psg-stage">${cardsHTML}</div><div class="psg-hint">mueve el cursor sobre el grid</div></div>`;
+    return d;
+  }
+  const wrap=document.getElementById("psg-wrap");
+  const stage=document.getElementById("psg-stage");
+  if(!wrap||!stage) return;
+  if(stage.dataset.bound) return; stage.dataset.bound="1";
+  
+  const cards=gsap.utils.toArray(".psg-card");
+  let radius=150, maxScale=2.2;
+  
+  stage.addEventListener("mousemove",(e)=>{
+    const mx=e.clientX, my=e.clientY;
+    cards.forEach((card)=>{
+      const r=card.getBoundingClientRect();
+      const cx=r.left+r.width/2, cy=r.top+r.height/2;
+      const dist=Math.hypot(mx-cx,my-cy);
+      const proximity=gsap.utils.clamp(0,1,gsap.utils.mapRange(0,radius,1,0,dist));
+      gsap.to(card,{
+        scale:1+(maxScale-1)*proximity,
+        duration:0.35,
+        overwrite:true,
+        ease:"power2.out"
+      });
+    });
+  });
+  
+  stage.addEventListener("mouseleave",()=>{
+    cards.forEach((card)=>{
+      gsap.to(card,{
+        scale:1,
+        duration:0.7,
+        overwrite:true,
+        ease:"power2.out"
+      });
+    });
+  });
 }
 
 render();
