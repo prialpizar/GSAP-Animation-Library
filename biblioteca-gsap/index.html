@@ -233,6 +233,25 @@
   .psg-stage{position:relative;width:100%;height:100%}
   .psg-card{position:absolute;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;font-weight:900;font-size:0.75rem;color:white;will-change:transform;transform-origin:center center}
   .psg-hint{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);font-size:0.62rem;color:var(--muted);pointer-events:none}
+  /* ── #61 Magnetic Distortion Grid ── */
+  .mdg-wrap{position:relative;height:320px;background:var(--card);border:1px solid var(--bd);border-radius:12px;overflow:hidden;cursor:crosshair}
+  .mdg-grid{display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(4,1fr);gap:6px;padding:12px;height:100%}
+  .mdg-tile{background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:8px;display:grid;place-items:center;font-weight:800;font-size:0.7rem;color:white;will-change:transform;transform-origin:center center}
+  /* ── #62 3D Card Stack con Depth ── */
+  .dcs-wrap{position:relative;height:320px;background:var(--card);border:1px solid var(--bd);border-radius:12px;overflow:hidden;perspective:1200px;cursor:grab}
+  .dcs-stack{position:relative;width:100%;height:100%;transform-style:preserve-3d}
+  .dcs-card{position:absolute;width:140px;height:180px;left:50%;top:50%;margin-left:-70px;margin-top:-90px;border-radius:14px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;font-weight:900;font-size:1rem;color:white;will-change:transform;backface-visibility:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.3)}
+  /* ── #63 Parallax Multi-layer Mouse ── */
+  .pml-wrap{position:relative;height:320px;background:var(--card);border:1px solid var(--bd);border-radius:12px;overflow:hidden;cursor:crosshair}
+  .pml-layer{position:absolute;inset:0;display:grid;place-items:center;will-change:transform}
+  .pml-layer-1{background:linear-gradient(135deg,rgba(124,92,255,0.1),rgba(255,78,205,0.1))}
+  .pml-layer-2{font-size:3rem;font-weight:900;color:rgba(255,255,255,0.15)}
+  .pml-layer-3{font-size:1.5rem;font-weight:800;color:var(--text)}
+  .pml-layer-4{width:60px;height:60px;border-radius:50%;background:var(--accent);opacity:0.6}
+  /* ── #64 Morphing SVG Path Complex ── */
+  .msp-wrap{position:relative;height:320px;background:var(--card);border:1px solid var(--bd);border-radius:12px;overflow:hidden;display:grid;place-items:center}
+  .msp-svg{width:200px;height:200px}
+  .msp-path{fill:none;stroke:var(--accent);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
 </style>
 </head>
 <body>
@@ -339,6 +358,10 @@ const LIB = [
   { id:"flipcard", cat:"3d", title:"Flip Card — Front/Back", tag:"FLIP 3D", desc:"Tarjeta que gira 180° con rotationY + preserve-3d: cara frontal y trasera con backface-visibility hidden. Click para girar en incrementos acumulativos. Patrón para reveal de producto / info oculta.", init: initFlipCard },
   // — NUEVAS #60-64 (animaciones de peso) —
   { id:"proximitygrid", cat:"physics", title:"Proximity Scale Grid", tag:"PROXIMITY", desc:"Grid de cards dispersas que se escalan según la distancia al cursor: Math.hypot calcula la distancia, gsap.utils.mapRange la convierte en proximidad 0→1, y cada card recibe un gsap.to con scale + overwrite:true. Controles para radius, maxScale y duración. Patrón para hover effects / galerías interactivas.", init: initProximityScaleGrid },
+  { id:"magneticgrid", cat:"physics", title:"Magnetic Distortion Grid", tag:"MAGNETIC", desc:"Grid 5×4 de tiles que se distorsionan magnéticamente siguiendo el cursor: cada tile calcula distancia al mouse con Math.hypot y aplica x/y proporcionales con easing elástico. Al salir, todos vuelven a su posición con stagger. Patrón para grids interactivos / efectos de distorsión.", init: initMagneticGrid },
+  { id:"depthstack", cat:"3d", title:"3D Card Stack con Depth", tag:"3D STACK", desc:"Cards apiladas con perspective 1200px y transform-style preserve-3d: drag horizontal rota todo el stack en rotationY, y cada card tiene translateZ diferente para crear profundidad real. Patrón para galerías 3D / portadas interactivas.", init: initDepthStack },
+  { id:"parallaxmouse", cat:"physics", title:"Parallax Multi-layer Mouse", tag:"PARALLAX", desc:"4 capas con diferentes velocidades de parallax según el movimiento del cursor (no scroll): capa de fondo lenta (0.02), texto grande medio (0.05), texto rápido (0.08), y círculo rápido (0.12). gsap.quickTo para performance. Patrón para heroes con profundidad.", init: initParallaxMouse },
+  { id:"morphpath", cat:"physics", title:"Morphing SVG Path Complex", tag:"MORPH", desc:"Interpolación entre 4 paths SVG con MorphSVGPlugin: círculo → estrella → corazón → diamante → círculo. Cada morph dura 1.2s con ease power2.inOut, y el path se dibuja con stroke-dashoffset. Loop infinito. Patrón para logos animados / iconos morphing.", init: initMorphPath },
 ];
 
 function render(){
@@ -2442,6 +2465,188 @@ function initProximityScaleGrid(create){
       });
     });
   });
+}
+
+function initMagneticGrid(create){
+  if(create){
+    const d=document.createElement("div"); d.id="magneticgrid-mini";
+    let tilesHTML='';
+    for(let i=0;i<20;i++) tilesHTML+=`<div class="mdg-tile">${String(i+1).padStart(2,'0')}</div>`;
+    d.innerHTML=`<div class="mdg-wrap" id="mdg-wrap"><div class="mdg-grid" id="mdg-grid">${tilesHTML}</div></div>`;
+    return d;
+  }
+  const wrap=document.getElementById("mdg-wrap");
+  const grid=document.getElementById("mdg-grid");
+  if(!wrap||!grid) return;
+  if(grid.dataset.bound) return; grid.dataset.bound="1";
+  
+  const tiles=gsap.utils.toArray(".mdg-tile");
+  const strength=0.15;
+  
+  wrap.addEventListener("mousemove",(e)=>{
+    const r=wrap.getBoundingClientRect();
+    const mx=e.clientX-r.left, my=e.clientY-r.top;
+    tiles.forEach((tile)=>{
+      const tr=tile.getBoundingClientRect();
+      const cx=tr.left-r.left+tr.width/2, cy=tr.top-r.top+tr.height/2;
+      const dx=mx-cx, dy=my-cy;
+      const dist=Math.hypot(dx,dy);
+      const maxDist=150;
+      if(dist<maxDist){
+        const factor=(1-dist/maxDist)*strength;
+        gsap.to(tile,{
+          x:dx*factor,
+          y:dy*factor,
+          duration:0.4,
+          ease:"elastic.out(1,0.5)",
+          overwrite:true
+        });
+      } else {
+        gsap.to(tile,{x:0,y:0,duration:0.6,ease:"power2.out",overwrite:true});
+      }
+    });
+  });
+  
+  wrap.addEventListener("mouseleave",()=>{
+    gsap.to(tiles,{x:0,y:0,duration:0.6,stagger:0.02,ease:"power2.out",overwrite:true});
+  });
+}
+
+function initDepthStack(create){
+  if(create){
+    const d=document.createElement("div"); d.id="depthstack-mini";
+    const colors=["#7c5cff","#ff4ecd","#00e5cc","#ffb800","#5c8cff"];
+    let cardsHTML='';
+    colors.forEach((c,i)=>{
+      cardsHTML+=`<div class="dcs-card" style="background:linear-gradient(135deg,${c},${c}dd);z-index:${5-i}">${String(i+1).padStart(2,'0')}</div>`;
+    });
+    d.innerHTML=`<div class="dcs-wrap" id="dcs-wrap"><div class="dcs-stack" id="dcs-stack">${cardsHTML}</div></div>`;
+    return d;
+  }
+  const wrap=document.getElementById("dcs-wrap");
+  const stack=document.getElementById("dcs-stack");
+  if(!wrap||!stack) return;
+  if(stack.dataset.bound) return; stack.dataset.bound="1";
+  
+  const cards=gsap.utils.toArray(".dcs-card");
+  cards.forEach((card,i)=>{
+    gsap.set(card,{rotateY:0,translateZ:-i*30});
+  });
+  
+  let isDragging=false, startX=0, currentRotation=0, startRotation=0;
+  
+  wrap.addEventListener("mousedown",(e)=>{
+    isDragging=true;
+    startX=e.clientX;
+    startRotation=currentRotation;
+    wrap.style.cursor="grabbing";
+  });
+  
+  window.addEventListener("mousemove",(e)=>{
+    if(!isDragging) return;
+    const dx=e.clientX-startX;
+    currentRotation=startRotation+dx*0.5;
+    gsap.to(stack,{rotationY:currentRotation,duration:0.3,ease:"power2.out",overwrite:true});
+  });
+  
+  window.addEventListener("mouseup",()=>{
+    if(isDragging){
+      isDragging=false;
+      wrap.style.cursor="grab";
+    }
+  });
+  
+  // Auto-rotate demo
+  gsap.to(stack,{rotationY:360,duration:8,ease:"none",repeat:-1});
+}
+
+function initParallaxMouse(create){
+  if(create){
+    const d=document.createElement("div"); d.id="parallaxmouse-mini";
+    d.innerHTML=`<div class="pml-wrap" id="pml-wrap">
+      <div class="pml-layer pml-layer-1" data-speed="0.02"></div>
+      <div class="pml-layer pml-layer-2" data-speed="0.05">PARALLAX</div>
+      <div class="pml-layer pml-layer-3" data-speed="0.08">Mouse Move</div>
+      <div class="pml-layer pml-layer-4" data-speed="0.12"></div>
+    </div>`;
+    return d;
+  }
+  const wrap=document.getElementById("pml-wrap");
+  if(!wrap) return;
+  if(wrap.dataset.bound) return; wrap.dataset.bound="1";
+  
+  const layers=gsap.utils.toArray(".pml-layer");
+  const quickX=gsap.quickTo(wrap,"x",{duration:0.6,ease:"power2.out"});
+  const quickY=gsap.quickTo(wrap,"y",{duration:0.6,ease:"power2.out"});
+  
+  wrap.addEventListener("mousemove",(e)=>{
+    const r=wrap.getBoundingClientRect();
+    const cx=r.left+r.width/2, cy=r.top+r.height/2;
+    const dx=e.clientX-cx, dy=e.clientY-cy;
+    
+    layers.forEach((layer)=>{
+      const speed=parseFloat(layer.dataset.speed);
+      gsap.to(layer,{
+        x:dx*speed,
+        y:dy*speed,
+        duration:0.6,
+        ease:"power2.out",
+        overwrite:true
+      });
+    });
+  });
+  
+  wrap.addEventListener("mouseleave",()=>{
+    layers.forEach((layer)=>{
+      gsap.to(layer,{x:0,y:0,duration:0.8,ease:"power2.out",overwrite:true});
+    });
+  });
+}
+
+function initMorphPath(create){
+  if(create){
+    const d=document.createElement("div"); d.id="morphpath-mini";
+    d.innerHTML=`<div class="msp-wrap" id="msp-wrap">
+      <svg class="msp-svg" viewBox="0 0 100 100">
+        <path class="msp-path" id="msp-path" d="M50,10 A40,40 0 1,1 49.99,10 Z"/>
+      </svg>
+    </div>`;
+    return d;
+  }
+  const wrap=document.getElementById("msp-wrap");
+  const path=document.getElementById("msp-path");
+  if(!wrap||!path) return;
+  if(path.dataset.bound) return; path.dataset.bound="1";
+  
+  // 4 paths: círculo, estrella, corazón, diamante
+  const paths=[
+    "M50,10 A40,40 0 1,1 49.99,10 Z", // círculo
+    "M50,5 L61,35 L95,35 L68,57 L79,91 L50,70 L21,91 L32,57 L5,35 L39,35 Z", // estrella
+    "M50,85 C20,65 0,45 0,30 C0,15 15,0 30,0 C40,0 45,5 50,15 C55,5 60,0 70,0 C85,0 100,15 100,30 C100,45 80,65 50,85 Z", // corazón
+    "M50,5 L95,50 L50,95 L5,50 Z" // diamante
+  ];
+  
+  let currentIndex=0;
+  
+  function morphToNext(){
+    currentIndex=(currentIndex+1)%paths.length;
+    if(window.MorphSVGPlugin){
+      gsap.to(path,{
+        morphSVG:paths[currentIndex],
+        duration:1.2,
+        ease:"power2.inOut"
+      });
+    }
+  }
+  
+  // Dibujar el path inicial
+  const length=path.getTotalLength();
+  path.style.strokeDasharray=length;
+  path.style.strokeDashoffset=length;
+  gsap.to(path,{strokeDashoffset:0,duration:1.5,ease:"power2.out"});
+  
+  // Loop de morph
+  setInterval(morphToNext,2000);
 }
 
 render();
