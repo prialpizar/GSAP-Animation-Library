@@ -22,7 +22,7 @@ La veracidad de los pasos y ajustes es **imprescindible**. El objetivo principal
 
 ## 📁 Estructura del proyecto
 
-- `biblioteca-gsap/index.html` — biblioteca de animaciones GSAP (53 demos, grid de cards, popup modal estilo "Orchestrated easeReverse").
+- `biblioteca-gsap/index.html` — biblioteca de animaciones GSAP (54 demos, grid de cards de altura fija 88px, popup modal estilo "Orchestrated easeReverse").
 - `demo-gsap.html` — demo de referencia (raíz).
 - `backup/` — backups con fecha, ej. `demo-gsap-2026-08-24-flip-flujo.html`.
 
